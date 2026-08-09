@@ -102,7 +102,22 @@
             encerradoPeloAdmin: !!(pFB.encerradoPeloAdmin||pL.encerradoPeloAdmin),
             motivoAdmin: pFB.motivoAdmin||pL.motivoAdmin||null,
             horaPrevistaSaida: pFB.horaPrevistaSaida||pL.horaPrevistaSaida||null,
-            obsAdmin: (pL.obsAdmin||[]).length>=(pFB.obsAdmin||[]).length ? (pL.obsAdmin||[]) : (pFB.obsAdmin||[])
+            obsAdmin: (pL.obsAdmin||[]).length>=(pFB.obsAdmin||[]).length ? (pL.obsAdmin||[]) : (pFB.obsAdmin||[]),
+            // Campos do fluxo de aprovação de encerramento — sem isso aqui,
+            // um pedido de encerramento (ou uma recusa do admin) podia se
+            // perder silenciosamente na sincronização, porque ficavam de
+            // fora e caíam no valor antigo vindo só da nuvem.
+            statusEncerramento:(()=>{
+              if(pL.fim||pFB.fim)return null; // já fechou de vez, não tem mais pedido pendente
+              if(pL.statusEncerramento&&!pFB.statusEncerramento)return pL.statusEncerramento;
+              if(pFB.statusEncerramento&&!pL.statusEncerramento)return pFB.statusEncerramento;
+              const tsL=pL.solicitadoEncerramentoEm?new Date(pL.solicitadoEncerramentoEm).getTime():0;
+              const tsFB=pFB.solicitadoEncerramentoEm?new Date(pFB.solicitadoEncerramentoEm).getTime():0;
+              return tsL>=tsFB?(pL.statusEncerramento||null):(pFB.statusEncerramento||null);
+            })(),
+            solicitadoEncerramentoEm: pL.solicitadoEncerramentoEm||pFB.solicitadoEncerramentoEm||null,
+            motivoRecusa: pL.motivoRecusa||pFB.motivoRecusa||null,
+            relatorioImagensExterno: pL.relatorioImagensExterno||pFB.relatorioImagensExterno||null
           };
         });
         // IMPORTANTE: plantões que existem SÓ localmente (ex: um vigia acabou de
@@ -450,7 +465,7 @@ html,body{height:100%;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
   <div class="login-logo">GUARDIÃO</div>
   <div class="login-tagline">RONDA MASTER</div>
   <div style="color:var(--muted);font-size:13px;margin-top:6px;">Sistema de Vigilância e Portaria</div>
-  <div style="color:var(--muted);font-size:10px;margin-bottom:24px;opacity:.6;">v2026.07.23-3</div>
+  <div style="color:var(--muted);font-size:10px;margin-bottom:24px;opacity:.6;">v1.3</div>
   <div class="login-box">
     <h2>Entrar no sistema</h2>
     <div class="field"><label>E-mail</label><input type="email" id="login-email" placeholder="seu@email.com"></div>
@@ -492,7 +507,7 @@ html,body{height:100%;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
   <div id="topbar">
     <div>
     <div class="logo"><img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAA+AFADASIAAhEBAxEB/8QAHAAAAgIDAQEAAAAAAAAAAAAAAwQFBwIGCAEA/8QAMxAAAQIEBQMCBAQHAAAAAAAAAQIDAAQFEQYSITFBBxMiUXEIMoGRFCNhwTNCY3KhsbL/xAAaAQACAwEBAAAAAAAAAAAAAAAABQIEBgMB/8QAKREAAQMDAgQGAwAAAAAAAAAAAQACAwQRIQUxEkGBoQYUJGHB0ZHh8f/aAAwDAQACEQMRAD8A5jYah9lrSMJdvxh5lItaPULxpmDBuCNp0tBUp9bWj1CAWtBpr6W1gS0A6cxLUiZXK1JtSDlKwpGbkXHB+lvrEVMzBmKhOOXukPqSk+2h/wAgxXE95zFble/Wyau0wDTBX8Yy8s4eeG3vf9dUq82PtCrqAYec1vAHACI7pUo11AhV1FriJF1IG0KuiBClmBoDeHGhYbQqzDKD72gQmAeYs/BHRHHWKKZLVZDMlTKdMth1mYnH9XEHUKShF1WI9bRVgXbiO4enddpdK6SYElqhUJaTdn6ZLsyqXnAjvOBvNkSToVWG3PEKdYrpKOEOjGSu8EQkdYqm1/D0mVl1OzmL1KebSVgS8j4gp13Uv9PSKyb6eMty4EtWF5rXu9LjUnU/Kr9o63xC6RLTHr21/wDJjnSVWopT7RjKfX657nOL+w+lonUMQiEZGN9zvjKrbEOFqpR5ZU2+GHZVJAU605oLmwuDYjUxrirbxZ3UmZYmundRelZht5CXm0FSFZgFJdSCLjkRVqFXQLxtNIrZayAulFiDbsPtIq6BkEgazYi6wd2hR0Q07biFnYaqmpFsiDpVwIUQbCChYA3gQmcwFo6trnT+U6kfDnhGkvTBlpuUpkvMyLpPgl3tWsscpINrjUaEbWjkvMNDHZXQPEknX+kNGQw4nv0xkU+abB1QtvQX/uTlUPeM34mllghjmjwWu+Ff0+NskhY7mFV/Qir42ZqWJMF4rnHphFHk7tpmfN5lRVly9zdSMuovfixtFV42RiStYsZwlSZgsSzksh13J43Sb5lLVvlFthvtqYsbGWNZHAPxB4mVU5V1UjWqfKJcfb8lMEN2Csv8ybg3tqNxfaNP6cVhjEvUepVaWl1tS0vTUy7RX8yx3B5EcX10hTG1zJXVwiAaWBwxjiIHz1TEkOYKfjzxEe9v4m8Z0CVw30cmqXKKWttlTRK17rUXklSrcXPHEVayr8sRbfXSqy8rg0U4qBmKg+2htHOVCgtSvYWA+sU+2oZP1EO/DjpJKZ0km7nE9gqOqBrZQ1vIBEct7wu7aCqVAHDpD9LU0hVxBAq+kLJXpaCBXMCEwVxsnTLHFQ6f4pTVZYOP0+YAaqMok/xm76KH9RNyUn3GxjVs3EeE5gQY5TwR1EZikFwVON7o3BzdwrE+JSakKtjylVymzCJqSqVFadZdRssJccH31sRwRaEelU9IUCk1+tz7nbl2ksoJHzKPmQkepJsAI0JzuktIU+4plrN2mybpRmN1W9LkX94HOF11pEsp5f4cOd3tX8Su1sx9TbT7wvGm+hFGXYGL+wN/zbCsea9QZ7Z+bI1dq89iWuu1ioeObxYaBullsbJH7nk3MYp2txGCAAmwG0ZKVYQyjjbEwMYLAKs5xeS525XyiIC4Yk6hR5yTa7rq2Cn8O1MeKiTlcNkjbf1/2YiVGJqK/9k=" alt="Guardião" style="height:28px;width:auto;vertical-align:middle;margin-right:7px;border-radius:3px;">Guardião<span> · Ronda Master</span></div>
-    <div id="tb-versao" style="font-size:9px;color:var(--muted);letter-spacing:.02em;margin-top:1px;">v2026.07.23-3</div>
+    <div id="tb-versao" style="font-size:9px;color:var(--muted);letter-spacing:.02em;margin-top:1px;">v1.3</div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;">
       <span id="sync-indicador" class="hidden" title="Aguardando conexão para sincronizar" style="font-size:16px;animation:pulse 1.5s infinite;">📡</span>
@@ -643,8 +658,18 @@ html,body{height:100%;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
     <div id="screen-config" class="screen">
       <div class="section-header"><h2>⚙️ Configurações</h2></div>
 
+      <!-- BACKUP: EXPORTAR / IMPORTAR -->
+      <div class="card" style="border-color:var(--teal);">
+        <div class="card-title">💾 Backup dos Dados</div>
+        <div class="text-xs mb-3" style="color:var(--muted);">Baixe uma cópia de segurança de tudo que está salvo no sistema (contratantes, vigilantes, plantões, financeiro, etc). Guarde esse arquivo — se precisar trocar de celular, restaurar depois de um problema, ou simplesmente manter uma cópia extra, é só importar de volta.</div>
+        <button class="btn btn-teal mb-2" style="width:100%;" onclick="exportarBackupCompleto()">⬇️ Exportar Backup</button>
+        <input type="file" id="input-importar-backup" accept=".json" style="display:none;" onchange="importarBackupCompleto(this)">
+        <button class="btn btn-outline" style="width:100%;" onclick="document.getElementById('input-importar-backup').click()">⬆️ Importar Backup</button>
+        <div class="text-xs mt-2" style="color:var(--amber);">⚠️ Importar substitui os dados atuais pelos do arquivo. Confirme antes de continuar.</div>
+      </div>
+
       <!-- DADOS DA EMPRESA -->
-      <div class="card">
+      <div class="card mt-3">
         <div class="card-title">🏢 Dados da Empresa de Ronda</div>
         <div class="field"><label>Nome / Razão Social</label><input type="text" id="emp-nome" placeholder="Ex: Segurança Total Ltda"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -1498,7 +1523,7 @@ html,body{height:100%;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
 <div class="modal-overlay hidden" id="modal-saida-antecipada">
   <div class="modal"><div class="modal-handle"></div>
     <div class="modal-title">⚠️ Saída antes do horário</div>
-    <div id="saida-antecipada-info" style="background:rgba(245,158,11,.1);border:1px solid var(--amber);border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;"></div>
+    <div id="saida-antecipada-info" style="background:rgba(220,38,38,.12);border:1px solid var(--red);border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;"></div>
     <div class="field"><label>Motivo da saída antecipada</label><textarea id="motivo-saida" placeholder="Descreva o motivo..."></textarea></div>
     <div class="flex gap-3 mt-2">
       <button class="btn btn-outline" onclick="fecharModal('modal-saida-antecipada')">Cancelar</button>
@@ -2429,7 +2454,18 @@ async function _verificarGeofence(contNome,localNome){
   const locaisDisponiveis=_locaisContratante(cont);
   const local=locaisDisponiveis.find(l=>l.nome===localNome);
   if(!local){
-    console.warn('[Geofence] Local "'+localNome+'" não encontrado no contratante "'+contNome+'". Locais disponíveis:',locaisDisponiveis.map(l=>l.nome),'— liberando sem checar.');
+    // Isso não devia acontecer nunca (o nome do local vem de uma lista que
+    // o próprio sistema montou) — mas se acontecer, e esse contratante usa
+    // controle de localização em QUALQUER outro local dele, é mais seguro
+    // BLOQUEAR do que liberar sem checar. Só libera direto se esse
+    // contratante claramente nunca usou essa proteção em lugar nenhum.
+    const usaControleEmAlgumLocal=locaisDisponiveis.some(l=>l.lat!=null&&l.lng!=null);
+    console.warn('[Geofence] Local "'+localNome+'" não encontrado no contratante "'+contNome+'". Locais disponíveis:',locaisDisponiveis.map(l=>l.nome));
+    if(usaControleEmAlgumLocal){
+      console.warn('[Geofence] Esse contratante usa controle de localização em outros locais — BLOQUEANDO por segurança em vez de liberar.');
+      return{ok:false,erroConfiguracao:true};
+    }
+    console.warn('[Geofence] Esse contratante não usa controle de localização em nenhum local — liberando sem checar.');
     return{ok:true};
   }
   if(local.lat==null||local.lng==null){
@@ -3689,6 +3725,95 @@ function salvarFinanceiro(){
 // ═══════════════════════════════════════════
 // CONFIG / ADMIN
 // ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+// BACKUP: EXPORTAR / IMPORTAR TUDO
+// ═══════════════════════════════════════════
+const _COLECOES_BACKUP=['veiculos','contratantes','vigilantes','escala','itens_veiculo','equipamentos','solicitacoes_troca','plantoes','pre_cadastros','solicitacoes_cadastro','usuarios','alertas_emergencia','itens_excluidos','financeiro'];
+
+async function exportarBackupCompleto(){
+  toast('📦 Preparando backup...');
+  // Busca a versão mais fresca possível da nuvem antes de exportar, pra não
+  // arriscar levar um backup desatualizado se o celular estiver com cache antigo
+  if(window._fbGet){
+    try{await sincronizarDadosAdmin(true);}catch(e){}
+  }
+  const backup={
+    _tipo:'guardiao-ronda-master-backup',
+    _versao:'v1.3',
+    _exportadoEm:new Date().toISOString(),
+    dados:{}
+  };
+  _COLECOES_BACKUP.forEach(k=>{backup.dados[k]=DB.get(k);});
+  try{backup.dados._empresa=JSON.parse(localStorage.getItem('rm_empresa')||'{}');}catch(e){backup.dados._empresa={};}
+
+  const conteudo=JSON.stringify(backup,null,2);
+  const blob=new Blob([conteudo],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const nomeArquivo=`backup-guardiao-ronda-master-${new Date().toISOString().split('T')[0]}.json`;
+
+  let baixou=false;
+  try{
+    const a=document.createElement('a');
+    a.href=url;a.download=nomeArquivo;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    baixou=true;
+  }catch(e){console.warn('Falha no download automático:',e);}
+  // Dentro do app instalado, o download acima pode não funcionar — tenta
+  // abrir numa aba também, como reforço (igual fizemos com os relatórios)
+  try{window.open(url,'_blank');}catch(e){}
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
+
+  toast(baixou?'✅ Backup exportado! Guarde esse arquivo em local seguro.':'✅ Backup gerado! Se não baixou sozinho, confira se abriu numa aba nova.');
+}
+window.exportarBackupCompleto=exportarBackupCompleto;
+
+function importarBackupCompleto(input){
+  const arquivo=input.files[0];
+  if(!arquivo)return;
+  const leitor=new FileReader();
+  leitor.onload=e=>{
+    let backup;
+    try{backup=JSON.parse(e.target.result);}catch(err){
+      toast('❌ Arquivo inválido — não é um backup reconhecível.');
+      input.value='';
+      return;
+    }
+    if(!backup||backup._tipo!=='guardiao-ronda-master-backup'||!backup.dados){
+      toast('❌ Esse arquivo não parece ser um backup do Guardião - Ronda Master.');
+      input.value='';
+      return;
+    }
+    const dataBackup=backup._exportadoEm?new Date(backup._exportadoEm).toLocaleString('pt-BR'):'data desconhecida';
+    const qtdItens=Object.values(backup.dados).reduce((s,arr)=>s+(Array.isArray(arr)?arr.length:0),0);
+    mostrarBloqueio(
+      '⚠️ Confirmar importação',
+      `Esse backup foi feito em ${dataBackup} e tem aproximadamente ${qtdItens} registros no total.\n\nIsso vai SUBSTITUIR todos os dados atuais do sistema pelos dados desse arquivo. Essa ação não pode ser desfeita.\n\nTem certeza que quer continuar?`,
+      'Sim, importar e substituir',
+      ()=>_confirmarImportacaoBackup(backup)
+    );
+    input.value='';
+  };
+  leitor.onerror=()=>{toast('❌ Não consegui ler o arquivo.');input.value='';};
+  leitor.readAsText(arquivo);
+}
+window.importarBackupCompleto=importarBackupCompleto;
+
+function _confirmarImportacaoBackup(backup){
+  toast('📦 Importando backup, aguarde...');
+  _COLECOES_BACKUP.forEach(k=>{
+    if(Array.isArray(backup.dados[k])){
+      DB.set(k,backup.dados[k]);
+    }
+  });
+  if(backup.dados._empresa){
+    try{localStorage.setItem('rm_empresa',JSON.stringify(backup.dados._empresa));}catch(e){}
+  }
+  setTimeout(()=>{
+    toast('✅ Backup importado com sucesso! Recarregando...');
+    setTimeout(()=>location.reload(),1200);
+  },500);
+}
+
 function renderConfig(){
   const u=DB.get('usuarios').find(x=>x.perfil==='admin');
   if(u){document.getElementById('cfg-email').value=u.email;}
@@ -4063,7 +4188,9 @@ async function iniciarPlantao(){
   const geo=await _verificarGeofence(contNome,localNome);
   if(btnIniciar)btnIniciar.disabled=false;
   if(!geo.ok){
-    if(geo.semGps){
+    if(geo.erroConfiguracao){
+      mostrarBloqueio('⚠️ Local não reconhecido',`Não conseguimos confirmar o controle de localização desse local específico agora. Por segurança, o início do plantão foi bloqueado.\n\nLigue pro administrador pra verificar o cadastro desse local, ou pra liberar seu acesso manualmente.`,'Entendi',()=>{});
+    }else if(geo.semGps){
       mostrarBloqueio('Localização necessária','Não conseguimos confirmar onde você está. Verifique se o GPS do celular está ligado e a permissão de localização liberada pro Guardião, e tente de novo.\n\nSe continuar sem funcionar, ligue pro administrador.','Entendi',()=>{});
     }else{
       mostrarBloqueio('Fora da área permitida',`Você está a ${geo.distancia}m do local — o permitido é até ${geo.raio}m.\n\nAproxime-se do local e tente de novo, ou ligue pro administrador pra liberar seu acesso.`,'Entendi',()=>{});
@@ -4320,7 +4447,9 @@ function confirmarSaidaAntecipada(){
 async function finalizarPlantao(antecipado,motivo){
   const geo=await _verificarGeofence(plantaoAtivo.contratanteNome,plantaoAtivo.localNome);
   if(!geo.ok){
-    if(geo.semGps){
+    if(geo.erroConfiguracao){
+      mostrarBloqueio('⚠️ Local não reconhecido',`Não conseguimos confirmar o controle de localização desse local específico agora. Por segurança, o encerramento foi bloqueado.\n\nLigue pro administrador pra verificar o cadastro desse local, ou pra liberar seu acesso manualmente.`,'Entendi',()=>{});
+    }else if(geo.semGps){
       mostrarBloqueio('Localização necessária','Não conseguimos confirmar onde você está pra encerrar o plantão. Verifique o GPS e tente de novo, ou ligue pro administrador.','Entendi',()=>{});
     }else{
       mostrarBloqueio('Fora da área permitida',`Você está a ${geo.distancia}m do local — o permitido é até ${geo.raio}m.\n\nAproxime-se do local pra encerrar o plantão, ou ligue pro administrador pra liberar.`,'Entendi',()=>{});
@@ -4958,13 +5087,14 @@ function renderChecklistSalvo(ck){
 // RELATÓRIOS
 // ═══════════════════════════════════════════
 function statusPlantao(p){
+  if(p.statusEncerramento==='pendente')return{badge:'<span class="badge badge-amber">⏳ Aguardando aprovação</span>',label:'pendente'};
   if(!p.fim||!p.horaPrevistaSaida)return{badge:'',label:'normal'};
   const[hP,mP]=p.horaPrevistaSaida.split(':').map(Number);
   const entrada=new Date(p.inicio);
   let prev=new Date(entrada);prev.setHours(hP,mP,0,0);
   if(prev<=entrada)prev.setDate(prev.getDate()+1);
   const diff=Math.round((new Date(p.fim)-prev)/60000);
-  if(p.saidaAntecipada||diff<-5)return{badge:'<span class="badge badge-amber">⚠️ Saída antecipada</span>',label:'antes'};
+  if(p.saidaAntecipada||diff<-5)return{badge:'<span class="badge badge-red">⚠️ Saída antecipada</span>',label:'antes'};
   if(diff>10)return{badge:'<span class="badge badge-blue">🔵 Hora extra</span>',label:'depois'};
   return{badge:'<span class="badge badge-green">✅ No horário</span>',label:'normal'};
 }
@@ -5006,7 +5136,7 @@ function renderRelatoriosPorData(plantoes,divId){
       }).join('')}
     </div>`).join('');
 }
-function renderRelatoriosAdmin(){renderRelatoriosPorData(DB.get('plantoes').filter(p=>p.fim),'lista-relatorios-admin');}
+function renderRelatoriosAdmin(){renderRelatoriosPorData(DB.get('plantoes').filter(p=>p.fim||p.statusEncerramento==='pendente'),'lista-relatorios-admin');}
 function excluirRelatorio(id){
   const p=DB.get('plantoes').find(x=>x.id===id);
   if(!p)return;
@@ -5051,7 +5181,7 @@ function gerarHtmlRelatorio(p, opcoes){
 
   // Status box
   let statusBox='';
-  if(s.label==='antes') statusBox=`<div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:6px;padding:8px 12px;font-size:12px;color:#92400E;margin-bottom:12px;">⚠️ <strong>Saída antecipada</strong>${p.motivoSaida?' — '+p.motivoSaida:''}</div>`;
+  if(s.label==='antes') statusBox=`<div style="background:#FEE2E2;border:1px solid #DC2626;border-radius:6px;padding:8px 12px;font-size:12px;color:#7F1D1D;margin-bottom:12px;">⚠️ <strong>Saída antecipada</strong>${p.motivoSaida?' — '+p.motivoSaida:''}</div>`;
   else if(s.label==='depois') statusBox=`<div style="background:#EFF6FF;border:1px solid #2E8BF7;border-radius:6px;padding:8px 12px;font-size:12px;color:#1e40af;margin-bottom:12px;">🔵 <strong>Hora extra registrada</strong></div>`;
   else if(p.fim) statusBox=`<div style="background:#D1FAE5;border:1px solid #10B981;border-radius:6px;padding:8px 12px;font-size:12px;color:#065F46;margin-bottom:12px;">✅ <strong>Encerrado no horário</strong></div>`;
 
@@ -5608,7 +5738,7 @@ function gerarPDF(plantaoId){
 
     // Faixa de status
     '.status{display:inline-block;padding:3px 10px;border-radius:3px;font-size:9px;font-weight:700;margin-bottom:9px;}',
-    '.st-antes{background:#FEF3C7;color:#8a5a00;border:1px solid #F2C464;}',
+    '.st-antes{background:#FEE2E2;color:#7F1D1D;border:1px solid #DC2626;}',
     '.st-depois{background:#E7EFFD;color:#1e4fa3;border:1px solid #a9c4f2;}',
     '.st-ok{background:#E6F7EF;color:#0d6b41;border:1px solid #a4e3c4;}',
 
