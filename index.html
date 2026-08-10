@@ -371,6 +371,43 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .sol-badge-new{display:inline-flex;align-items:center;justify-content:center;
   background:#DC2626;color:#fff;border-radius:99px;font-size:10px;
   font-weight:700;min-width:18px;height:18px;padding:0 5px;margin-left:6px;}
+/* ── LOGIN SCREEN ── */
+#login-screen{
+  display:none;position:fixed;inset:0;z-index:10000;
+  background:linear-gradient(135deg,#0a1628 0%,#0F2044 50%,#1a3060 100%);
+  align-items:center;justify-content:center;font-family:'Segoe UI',system-ui,sans-serif;
+}
+#login-screen.active{display:flex;}
+.login-box{
+  background:#fff;border-radius:16px;padding:36px 32px;width:100%;max-width:380px;
+  box-shadow:0 24px 80px rgba(0,0,0,.4);
+}
+.login-logo{text-align:center;margin-bottom:28px;}
+.login-logo img{width:64px;height:64px;border-radius:14px;margin-bottom:10px;}
+.login-logo h1{font-size:20px;font-weight:800;color:#0F2044;margin:0 0 3px;}
+.login-logo p{font-size:12px;color:#94a3b8;margin:0;text-transform:uppercase;letter-spacing:.8px;}
+.login-field{margin-bottom:14px;}
+.login-field label{display:block;font-size:11px;font-weight:700;color:#64748b;
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;}
+.login-field input{width:100%;border:1.5px solid #e2e8f0;border-radius:8px;
+  padding:11px 13px;font-size:14px;color:#0f172a;background:#f8fafc;
+  font-family:inherit;transition:border .15s;box-sizing:border-box;}
+.login-field input:focus{outline:none;border-color:#2563eb;
+  box-shadow:0 0 0 3px rgba(37,99,235,.12);}
+.login-btn{width:100%;padding:13px;background:#2563eb;color:#fff;border:none;
+  border-radius:9px;font-size:15px;font-weight:700;cursor:pointer;
+  transition:background .15s;margin-top:4px;}
+.login-btn:hover{background:#1d4ed8;}
+.login-btn:active{transform:scale(.98);}
+.login-err{background:#fef2f2;color:#991b1b;border-radius:7px;padding:9px 13px;
+  font-size:12px;margin-top:12px;text-align:center;display:none;}
+.login-version{text-align:center;margin-top:20px;font-size:11px;color:#cbd5e1;}
+/* Header user info */
+#user-info{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver3);}
+#user-info strong{color:var(--dk);font-size:13px;}
+.logout-btn{background:none;border:1px solid var(--border);border-radius:6px;
+  padding:4px 10px;font-size:11px;color:var(--silver3);cursor:pointer;transition:.15s;}
+.logout-btn:hover{background:var(--bg2);color:var(--dk);}
 @media print{
   @page{size:A4;margin:14mm 16mm;}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
@@ -414,7 +451,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     <div style="display:flex;align-items:center;gap:12px;">
       <h2 id="ptitle">Dashboard</h2>
     </div>
-    <div style="display:flex;gap:8px;" id="tacts"></div>
+    <div style="display:flex;gap:8px;" id="tacts"></div><div id="user-info"><span id="user-nome" style="font-size:12px;color:var(--silver3);"></span><button class="logout-btn" onclick="fazerLogout()">Sair</button></div>
   </div>
   <div id="ct">
 
@@ -531,6 +568,79 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   </div>
 </div>
 
+<!-- Modal: Usuário -->
+<div class="mo" id="mu">
+  <div class="mb" style="max-width:480px;">
+    <div class="mh">
+      <h3 id="mu-titulo">Novo Usuário</h3>
+      <button class="btn bgh bsm" onclick="closeM('mu')">✕</button>
+    </div>
+    <div class="mbody">
+      <input type="hidden" id="mu-id">
+      <div class="g2">
+        <div class="fi"><label>Nome completo *</label>
+          <input type="text" id="mu-nome" placeholder="Nome do usuário"></div>
+        <div class="fi"><label>Login *</label>
+          <input type="text" id="mu-login" placeholder="ex: joao.silva" autocomplete="off"></div>
+      </div>
+      <div class="fi"><label>Senha</label>
+        <input type="password" id="mu-senha" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+      </div>
+
+      <!-- Admin toggle -->
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="checkbox" id="mu-admin" style="width:16px;height:16px;accent-color:var(--accent);"
+                 onchange="toggleAdminMode(this.checked)">
+          <label for="mu-admin" style="font-size:13px;font-weight:700;color:#1e40af;margin:0;cursor:pointer;">
+            👑 Administrador — acesso total ao sistema
+          </label>
+        </div>
+        <div style="font-size:11px;color:#3b82f6;margin-top:4px;padding-left:26px;">
+          O administrador pode gerenciar usuários e acessar todas as funções.
+        </div>
+      </div>
+
+      <!-- Módulos de acesso -->
+      <div id="mu-modulos-wrap">
+        <div style="font-size:11px;font-weight:700;color:var(--silver3);text-transform:uppercase;
+             letter-spacing:.5px;margin-bottom:6px;">Módulos com acesso</div>
+        <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:12px;">
+          <div style="background:var(--bg);padding:7px 10px;border-bottom:1px solid var(--border);
+               display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:11px;color:var(--silver3);">Marque os módulos que este usuário pode acessar</span>
+            <span style="display:flex;gap:8px;">
+              <button class="btn bgh bsm" style="font-size:10px;padding:3px 8px;" onclick="marcarTodosModulos(true)">Todos</button>
+              <button class="btn bgh bsm" style="font-size:10px;padding:3px 8px;" onclick="marcarTodosModulos(false)">Nenhum</button>
+            </span>
+          </div>
+<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border);"><input type="checkbox" id="mu-mod-dashboard" value="dashboard" style="width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;"><label for="mu-mod-dashboard" style="font-size:13px;color:var(--dk);font-weight:500;margin:0;cursor:pointer;flex:1;"><span style="margin-right:6px;">📊</span>Dashboard</label></div>
+<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border);"><input type="checkbox" id="mu-mod-calendario" value="calendario" style="width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;"><label for="mu-mod-calendario" style="font-size:13px;color:var(--dk);font-weight:500;margin:0;cursor:pointer;flex:1;"><span style="margin-right:6px;">📅</span>Calendário</label></div>
+<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border);"><input type="checkbox" id="mu-mod-pedidos" value="pedidos" style="width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;"><label for="mu-mod-pedidos" style="font-size:13px;color:var(--dk);font-weight:500;margin:0;cursor:pointer;flex:1;"><span style="margin-right:6px;">📋</span>Pedidos</label></div>
+<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border);"><input type="checkbox" id="mu-mod-financeiro" value="financeiro" style="width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;"><label for="mu-mod-financeiro" style="font-size:13px;color:var(--dk);font-weight:500;margin:0;cursor:pointer;flex:1;"><span style="margin-right:6px;">💰</span>Financeiro</label></div>
+<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border);"><input type="checkbox" id="mu-mod-produtos" value="produtos" style="width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;"><label for="mu-mod-produtos" style="font-size:13px;color:var(--dk);font-weight:500;margin:0;cursor:pointer;flex:1;"><span style="margin-right:6px;">📦</span>Produtos & Estoque</label></div>
+<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border);"><input type="checkbox" id="mu-mod-maquinas" value="maquinas" style="width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;"><label for="mu-mod-maquinas" style="font-size:13px;color:var(--dk);font-weight:500;margin:0;cursor:pointer;flex:1;"><span style="margin-right:6px;">🔧</span>Máquinas</label></div>
+<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border);"><input type="checkbox" id="mu-mod-clientes" value="clientes" style="width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;"><label for="mu-mod-clientes" style="font-size:13px;color:var(--dk);font-weight:500;margin:0;cursor:pointer;flex:1;"><span style="margin-right:6px;">👥</span>Clientes</label></div>
+<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border);"><input type="checkbox" id="mu-mod-config" value="config" style="width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;"><label for="mu-mod-config" style="font-size:13px;color:var(--dk);font-weight:500;margin:0;cursor:pointer;flex:1;"><span style="margin-right:6px;">⚙️</span>Configurações</label></div>
+<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border);"><input type="checkbox" id="mu-mod-relatorios" value="relatorios" style="width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;"><label for="mu-mod-relatorios" style="font-size:13px;color:var(--dk);font-weight:500;margin:0;cursor:pointer;flex:1;"><span style="margin-right:6px;">📈</span>Relatórios</label></div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+        <input type="checkbox" id="mu-ativo" checked style="width:16px;height:16px;accent-color:var(--accent);">
+        <label for="mu-ativo" style="font-size:13px;color:var(--dk);font-weight:500;margin:0;cursor:pointer;">Usuário ativo</label>
+      </div>
+
+      <div class="login-err" id="mu-err" style="margin-top:10px;"></div>
+    </div>
+    <div class="mf">
+      <button class="btn bs" onclick="closeM('mu')">Cancelar</button>
+      <button class="btn bd bsm" id="mu-excluir" onclick="excluirUsuario(document.getElementById('mu-id').value)" style="display:none;">🗑 Excluir</button>
+      <button class="btn bp" onclick="salvarUsuario()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
 <div class="mo" id="mcal">
   <div class="mb" style="max-width:480px;">
     <div class="mh"><h3 id="mcal-titulo">Pedido</h3><button class="btn bgh bsm" onclick="closeM('mcal')">✕</button></div>
@@ -621,6 +731,32 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
       <p>Recebemos seu pedido e entraremos em contato em breve pelo WhatsApp para confirmar.</p>
       <p style="margin-top:12px;font-size:12px;color:#94A3B8;">Você pode fechar esta janela.</p>
     </div>
+  </div>
+</div>
+
+<!-- TELA DE LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div style="font-size:48px;margin-bottom:8px;">🍺</div>
+      <h1>ChoppMaster</h1>
+      <p>Gestão de Chopp & Aluguel</p>
+    </div>
+    <div class="login-field">
+      <label>Login</label>
+      <input type="text" id="auth-login" placeholder="seu.login"
+             autocomplete="username"
+             onkeydown="if(event.key==='Enter')document.getElementById('auth-senha').focus()">
+    </div>
+    <div class="login-field">
+      <label>Senha</label>
+      <input type="password" id="auth-senha" placeholder="••••••••"
+             autocomplete="current-password"
+             onkeydown="if(event.key==='Enter')fazerLogin()">
+    </div>
+    <button class="login-btn" onclick="fazerLogin()">Entrar →</button>
+    <div class="login-err" id="login-err"></div>
+    <div class="login-version">ChoppMaster ERP v3.1</div>
   </div>
 </div>
 
@@ -916,10 +1052,10 @@ function gEl(id){return document.getElementById(id)||{value:'',checked:false,sty
 function gVal(id){var e=document.getElementById(id);return e?e.value:'';}
 function sVal(id,v){var e=document.getElementById(id);if(e)e.value=v;}
 
-var DB={pedidos:[],produtos:[],maquinas:[],clientes:[],lancamentos:[],movimentos:[],alertas:[],solicitacoes:[],config:{empresa:'ChoppMaster',responsavel:'',cpfCnpj:'',tel:'',cnpj:'',email:'',end:'',pix:'',termoVenda:'',termoLocacao:''}};
+var DB={pedidos:[],produtos:[],maquinas:[],clientes:[],lancamentos:[],movimentos:[],alertas:[],solicitacoes:[],usuarios:[],config:{empresa:'ChoppMaster',responsavel:'',cpfCnpj:'',tel:'',cnpj:'',email:'',end:'',pix:'',termoVenda:'',termoLocacao:''}};
 var _itens=[],_editId=null,_voltaCli=false,_voltaPed=false;
 
-function loadDB(){try{var s=localStorage.getItem('cm_v7')||localStorage.getItem('cm_v5');if(s)DB=JSON.parse(s);if(!DB.config)DB.config={empresa:'ChoppMaster',responsavel:'',cpfCnpj:'',tel:'',cnpj:'',email:'',end:'',pix:'',termoVenda:'',termoLocacao:''};if(!DB.alertas)DB.alertas=[];if(!DB.solicitacoes)DB.solicitacoes=[];if(DB.config.responsavel===undefined)DB.config.responsavel='';if(DB.config.cpfCnpj===undefined)DB.config.cpfCnpj='';}catch(e){}}
+function loadDB(){try{var s=localStorage.getItem('cm_v7')||localStorage.getItem('cm_v5');if(s)DB=JSON.parse(s);if(!DB.config)DB.config={empresa:'ChoppMaster',responsavel:'',cpfCnpj:'',tel:'',cnpj:'',email:'',end:'',pix:'',termoVenda:'',termoLocacao:''};if(!DB.alertas)DB.alertas=[];if(!DB.solicitacoes)DB.solicitacoes=[];if(!DB.usuarios)DB.usuarios=[];if(DB.config.responsavel===undefined)DB.config.responsavel='';if(DB.config.cpfCnpj===undefined)DB.config.cpfCnpj='';}catch(e){}}
 function saveDB(){localStorage.setItem('cm_v7',JSON.stringify(DB));if(_fbUid&&!_fbSyncing)setTimeout(fbSave,1200);var e=document.getElementById('lsave');if(e)e.textContent='Salvo '+new Date().toLocaleTimeString('pt-BR');}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function R$(v){return 'R$ '+(parseFloat(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
@@ -1853,8 +1989,17 @@ function renderConfig(){
   h+='<div class="fi"><label>API Key</label><input type="text" id="cfg-fb-key" value="'+escHtml(cfg.fbKey||"")+'" placeholder="AIzaSy..."></div></div>';
   h+='</div></div>';
   h+='<div style="text-align:right;margin-bottom:40px;"><button class="btn bp" style="padding:12px 28px;font-size:14px;" onclick="salvaConfig()">&#128190; Salvar Configura&ccedil;&otilde;es</button></div></div>';
+  // Seção de usuários (só admin)
+  if(_authUser&&_authUser.perfil==='admin'){
+    h+='<div class="card" style="margin-bottom:20px;">';
+    h+='<div class="ch"><h3>&#128100; Usu&aacute;rios do Sistema</h3>';
+    h+='<span style="font-size:11px;color:var(--silver3);">Quem pode acessar o ChoppMaster</span></div>';
+    h+='<div class="cb"><div id="usuarios-section">Carregando...</div></div></div>';
+  }
+  h+='<div style="text-align:right;margin-bottom:40px;">';
+  h+='<button class="btn bp" style="padding:12px 28px;font-size:14px;" onclick="salvaConfig()">&#128190; Salvar Configura&ccedil;&otilde;es</button></div>';
   pg.innerHTML=h;
-  setTimeout(function(){maskPhone(document.getElementById("cfg-tel"));maskCPFCNPJ(document.getElementById("cfg-cpfcnpj"));},30);
+  setTimeout(function(){maskPhone(document.getElementById("cfg-tel"));maskCPFCNPJ(document.getElementById("cfg-cpfcnpj"));renderUsuarios();},30);
 }
 
 function salvaConfig(){
@@ -2472,6 +2617,327 @@ function recusarSolicitacao(id){
   toast('Solicitação recusada.','err');
 }
 
+
+/* ===== AUTENTICAÇÃO ===== */
+var _authUser = null; // usuário logado na sessão
+
+/* SHA-256 simples via SubtleCrypto (async) */
+async function sha256(msg){
+  var buf = await crypto.subtle.digest('SHA-256',new TextEncoder().encode(msg));
+  return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+}
+
+/* Garante usuário admin padrão se DB.usuarios estiver vazio */
+async function garantirAdminPadrao(){
+  if(!DB.usuarios)DB.usuarios=[];
+  if(DB.usuarios.length===0){
+    var hash = await sha256('chopp123');
+    DB.usuarios.push({
+      id:uid(), nome:'Administrador', login:'admin',
+      senhaHash:hash, admin:true,
+      modulos:['dashboard','calendario','pedidos','financeiro','produtos','maquinas','clientes','config'],
+      ativo:true
+    });
+    saveDB();
+  }
+}
+
+/* Verifica se há sessão ativa (sessionStorage — dura até fechar a aba) */
+function checkAuth(){
+  var sess = null;
+  try{ sess = JSON.parse(sessionStorage.getItem('cm_auth')||'null'); }catch(e){}
+  if(sess && sess.id && sess.exp > Date.now()){
+    _authUser = sess;
+    atualizarUserInfo();
+    return true;
+  }
+  _authUser = null;
+  mostrarLogin();
+  return false;
+}
+
+function mostrarLogin(){
+  document.getElementById('login-screen').classList.add('active');
+  var mn=document.getElementById('mn');var sb=document.getElementById('sb');
+  var bn=document.getElementById('bottom-nav');
+  if(mn)mn.style.visibility='hidden';
+  if(sb)sb.style.visibility='hidden';
+  if(bn)bn.style.display='none';
+  setTimeout(function(){
+    var el=document.getElementById('auth-login');if(el)el.focus();
+  },100);
+}
+
+function esconderLogin(){
+  document.getElementById('login-screen').classList.remove('active');
+  var mn=document.getElementById('mn');var sb=document.getElementById('sb');
+  var bn=document.getElementById('bottom-nav');
+  if(mn)mn.style.visibility='';
+  if(sb)sb.style.visibility='';
+  if(bn)bn.style.display='block';
+}
+
+function fazerLogin(){
+  var loginVal = (document.getElementById('auth-login').value||'').trim().toLowerCase();
+  var senhaVal = document.getElementById('auth-senha').value||'';
+  var errEl    = document.getElementById('login-err');
+  errEl.style.display='none';
+
+  if(!loginVal||!senhaVal){
+    errEl.textContent='Preencha o login e a senha.';
+    errEl.style.display='block';
+    return;
+  }
+
+  sha256(senhaVal).then(function(hash){
+    if(!DB.usuarios||!DB.usuarios.length){
+      errEl.textContent='Nenhum usuário cadastrado. Contate o administrador.';
+      errEl.style.display='block';
+      return;
+    }
+    var user = DB.usuarios.find(function(u){
+      return u.login.toLowerCase()===loginVal && u.senhaHash===hash && u.ativo;
+    });
+    if(!user){
+      errEl.textContent='Login ou senha incorretos. Tente novamente.';
+      errEl.style.display='block';
+      document.getElementById('auth-senha').value='';
+      document.getElementById('auth-senha').focus();
+      return;
+    }
+    // Sessão válida por 8 horas
+    var sess = {id:user.id, nome:user.nome, login:user.login,
+                perfil:user.perfil, exp:Date.now()+8*60*60*1000};
+    sessionStorage.setItem('cm_auth', JSON.stringify(sess));
+    _authUser = sess;
+    esconderLogin();
+    atualizarUserInfo();
+    aplicarPermissoes();
+    initMasks();
+    goTo('dashboard');
+  });
+}
+
+function fazerLogout(){
+  sessionStorage.removeItem('cm_auth');
+  _authUser=null;
+  // Limpar campos
+  var al=document.getElementById('auth-login');
+  var as=document.getElementById('auth-senha');
+  if(al)al.value='';if(as)as.value='';
+  mostrarLogin();
+}
+
+function atualizarUserInfo(){
+  var el=document.getElementById('user-nome');
+  if(el&&_authUser){
+    var perfil=_authUser.perfil==='admin'?'👑 ':_authUser.perfil==='financeiro'?'💰 ':'';
+    el.innerHTML='<strong>'+perfil+_authUser.nome+'</strong>';
+  }
+}
+
+/* Oculta menus que o perfil não tem acesso */
+function temAcesso(modulo){
+  if(!_authUser) return false;
+  if(_authUser.admin) return true;
+  var mods = _authUser.modulos || [];
+  return mods.indexOf(modulo) >= 0;
+}
+
+function aplicarPermissoes(){
+  if(!_authUser) return;
+  var isAdmin = _authUser.admin;
+  // Sidebar links — mostrar/ocultar conforme permissão
+  var mapa = {
+    'nv-dashboard':   'dashboard',
+    'nv-calendario':  'calendario',
+    'nv-pedidos':     'pedidos',
+    'nv-financeiro':  'financeiro',
+    'nv-config':      'config',
+  };
+  // Produtos, Máquinas, Clientes ficam no submenu (sidebar desktop)
+  var submapa = {
+    'nv-produtos':    'produtos',
+    'nv-maquinas':    'maquinas',
+    'nv-clientes':    'clientes',
+  };
+  Object.keys(mapa).forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.style.display = temAcesso(mapa[id]) ? '' : 'none';
+  });
+  Object.keys(submapa).forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.style.display = temAcesso(submapa[id]) ? '' : 'none';
+  });
+  // Bottom nav
+  var bnMapa = {
+    'bn-dashboard':  'dashboard',
+    'bn-calendario': 'calendario',
+    'bn-pedidos':    'pedidos',
+    'bn-financeiro': 'financeiro',
+  };
+  Object.keys(bnMapa).forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.style.display = temAcesso(bnMapa[id]) ? '' : 'none';
+  });
+  // Proteger goTo: redirecionar se tentar acessar módulo sem permissão
+}
+
+/* Intercepta goTo para verificar permissão */
+var _goToOriginal = goTo;
+function goTo(pg){
+  if(_authUser && pg !== 'dashboard' && !temAcesso(pg)){
+    toast('Sem permissão para acessar este módulo.','err');
+    return;
+  }
+  _goToOriginal(pg);
+}
+
+/* ── GERENCIAMENTO DE USUÁRIOS (Admin) ── */
+var _editUserId=null;
+
+function renderUsuarios(){
+  var cont=document.getElementById('usuarios-section');
+  if(!cont)return;
+  if(!_authUser||_authUser.perfil!=='admin'){
+    cont.innerHTML='<div style="color:var(--red);font-size:13px;">Acesso restrito ao administrador.</div>';
+    return;
+  }
+  var users=DB.usuarios||[];
+  // perfis agora são por módulo
+  var h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'
+    +'<div style="font-size:13px;color:var(--silver3);">'+users.length+' usuário(s) cadastrado(s)</div>'
+    +'<button class="btn bp bsm" onclick="abrirModalUsuario(null)">+ Novo Usuário</button>'
+    +'</div>';
+
+  if(users.length){
+    h+='<table class="tbl"><thead><tr>'
+      +'<th>Nome</th><th>Login</th><th>Perfil</th><th>Status</th><th style="width:100px;"></th>'
+      +'</tr></thead><tbody>';
+    users.forEach(function(u){
+      h+='<tr>'
+        +'<td><strong>'+u.nome+'</strong></td>'
+        +'<td style="font-family:monospace;font-size:12px;">'+u.login+'</td>'
+        +'<td><span class="badge '+(u.perfil==='admin'?'bgb':u.perfil==='financeiro'?'bgy':'bgr')+'">'+(perfilLabel[u.perfil]||u.perfil)+'</span></td>'
+        +'<td><span class="badge '+(u.ativo?'bgr':'bgg')+'">'+(u.ativo?'Ativo':'Inativo')+'</span></td>'
+        +'<td><button class="btn bgh bsm" onclick="abrirModalUsuario(\''+u.id+'\')">✏️ Editar</button></td>'
+        +'</tr>';
+    });
+    h+='</tbody></table>';
+  } else {
+    h+='<div style="text-align:center;color:var(--silver3);font-size:13px;padding:20px 0;">Nenhum usuário. Crie o primeiro acima.</div>';
+  }
+  cont.innerHTML=h;
+}
+
+/* IDs de todos os módulos */
+var MODULOS_IDS = ['dashboard','calendario','pedidos','financeiro','produtos','maquinas','clientes','config','relatorios'];
+
+function toggleAdminMode(isAdmin){
+  var wrap = document.getElementById('mu-modulos-wrap');
+  if(wrap) wrap.style.opacity = isAdmin ? '.4' : '1';
+  if(wrap) wrap.style.pointerEvents = isAdmin ? 'none' : '';
+  if(isAdmin) marcarTodosModulos(true);
+}
+
+function marcarTodosModulos(val){
+  MODULOS_IDS.forEach(function(mid){
+    var el = document.getElementById('mu-mod-'+mid);
+    if(el) el.checked = val;
+  });
+}
+
+function getModulosSelecionados(){
+  return MODULOS_IDS.filter(function(mid){
+    var el = document.getElementById('mu-mod-'+mid);
+    return el && el.checked;
+  });
+}
+
+function abrirModalUsuario(id){
+  _editUserId = id;
+  var u = id ? (DB.usuarios||[]).find(function(x){return x.id===id;}) : null;
+  document.getElementById('mu-id').value    = id||'';
+  document.getElementById('mu-nome').value  = u ? u.nome  : '';
+  document.getElementById('mu-login').value = u ? u.login : '';
+  document.getElementById('mu-senha').value = '';
+  document.getElementById('mu-ativo').checked = u ? u.ativo : true;
+  document.getElementById('mu-senha').placeholder = u ? 'Deixe em branco para manter' : 'Mínimo 6 caracteres';
+
+  var isAdmin = u ? u.admin===true : false;
+  document.getElementById('mu-admin').checked = isAdmin;
+  toggleAdminMode(isAdmin);
+
+  // Marcar módulos salvos
+  var mods = u ? (u.modulos||[]) : ['dashboard','calendario','pedidos','clientes'];
+  MODULOS_IDS.forEach(function(mid){
+    var el = document.getElementById('mu-mod-'+mid);
+    if(el) el.checked = isAdmin || mods.indexOf(mid) >= 0;
+  });
+
+  var t = document.getElementById('mu-titulo');
+  if(t) t.textContent = id ? 'Editar Usuário' : 'Novo Usuário';
+  var muex = document.getElementById('mu-excluir');
+  if(muex) muex.style.display = id ? 'inline-flex' : 'none';
+  document.getElementById('mu-err').style.display = 'none';
+  openM('mu');
+}
+
+function salvarUsuario(){
+  var nome  = (document.getElementById('mu-nome').value||'').trim();
+  var login = (document.getElementById('mu-login').value||'').trim().toLowerCase();
+  var senha =  document.getElementById('mu-senha').value||'';
+  var isAdm =  document.getElementById('mu-admin').checked;
+  var ativo =  document.getElementById('mu-ativo').checked;
+  var mods  =  isAdm ? MODULOS_IDS.slice() : getModulosSelecionados();
+  var errEl =  document.getElementById('mu-err');
+  errEl.style.display='none';
+
+  if(!nome){ errEl.textContent='Informe o nome completo.'; errEl.style.display='block'; return; }
+  if(!login){ errEl.textContent='Informe o login.'; errEl.style.display='block'; return; }
+  if(!/^[a-z0-9._-]+$/.test(login)){
+    errEl.textContent='Login: use apenas letras minúsculas, números, ponto ou traço.';
+    errEl.style.display='block'; return;
+  }
+  var isNew = !_editUserId;
+  if(isNew&&!senha){ errEl.textContent='Informe uma senha para o novo usuário.'; errEl.style.display='block'; return; }
+  if(senha&&senha.length<6){ errEl.textContent='A senha deve ter no mínimo 6 caracteres.'; errEl.style.display='block'; return; }
+  if(!isAdm&&mods.length===0){ errEl.textContent='Selecione ao menos um módulo de acesso.'; errEl.style.display='block'; return; }
+
+  var dup = (DB.usuarios||[]).find(function(u){ return u.login===login && u.id!==_editUserId; });
+  if(dup){ errEl.textContent='Este login já está em uso por outro usuário.'; errEl.style.display='block'; return; }
+
+  function salvarComHash(hash){
+    if(!DB.usuarios) DB.usuarios=[];
+    if(isNew){
+      DB.usuarios.push({
+        id:uid(), nome:nome, login:login, senhaHash:hash,
+        admin:isAdm, modulos:mods, ativo:ativo
+      });
+    } else {
+      var u = DB.usuarios.find(function(x){ return x.id===_editUserId; });
+      if(u){
+        u.nome=nome; u.login=login; u.admin=isAdm; u.modulos=mods; u.ativo=ativo;
+        if(hash) u.senhaHash=hash;
+      }
+    }
+    saveDB();
+    closeM('mu');
+    renderUsuarios();
+    toast(isNew ? 'Usuário criado! ✅' : 'Usuário atualizado! ✅', 'ok');
+  }
+
+  if(senha){ sha256(senha).then(salvarComHash); }
+  else { salvarComHash(null); }
+}
+
+function excluirUsuario(id){
+  if(_authUser&&_authUser.id===id){toast('Você não pode excluir o próprio usuário.','err');return;}
+  if(!confirm('Excluir este usuário?'))return;
+  DB.usuarios=(DB.usuarios||[]).filter(function(u){return u.id!==id;});
+  saveDB();renderUsuarios();toast('Usuário excluído.','ok');
+}
+
 /* ===== CALENDÁRIO ===== */
 var _calAno  = new Date().getFullYear();
 var _calMes  = new Date().getMonth(); // 0-11
@@ -2911,11 +3377,15 @@ if(checkSolicitarMode()){
 } else if(checkPortalMode()){
   // Modo portal — não inicializar sistema principal
 } else {
-  try{
-    if(fbInit()){
-      fbLoad(function(){initMasks();goTo('dashboard');});
-    }else{initMasks();goTo('dashboard');}
-  }catch(e){console.warn('startup:',e);initMasks();goTo('dashboard');}
+  // Garantir admin padrão e depois verificar auth
+  garantirAdminPadrao().then(function(){
+    if(!checkAuth()) return; // mostra login
+    try{
+      if(fbInit()){
+        fbLoad(function(){aplicarPermissoes();initMasks();goTo('dashboard');});
+      }else{aplicarPermissoes();initMasks();goTo('dashboard');}
+    }catch(e){console.warn('startup:',e);aplicarPermissoes();initMasks();goTo('dashboard');}
+  });
 }
 </script>
 
