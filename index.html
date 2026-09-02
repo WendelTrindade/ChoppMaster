@@ -734,6 +734,39 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   </div>
 </div>
 
+<!-- TELA DE ATIVAÇÃO DE LICENÇA -->
+<div id="ativacao-screen" style="display:none;position:fixed;inset:0;z-index:10001;
+  background:linear-gradient(135deg,#0a1628 0%,#0F2044 60%,#1a3060 100%);
+  align-items:center;justify-content:center;font-family:'Segoe UI',system-ui,sans-serif;">
+  <div style="background:#fff;border-radius:16px;padding:36px 32px;width:100%;max-width:400px;
+    box-shadow:0 24px 80px rgba(0,0,0,.4);text-align:center;">
+    <div style="font-size:52px;margin-bottom:8px;">🔐</div>
+    <h1 style="font-size:20px;font-weight:800;color:#0F2044;margin:0 0 6px;">ChoppMaster ERP</h1>
+    <p style="font-size:12px;color:#94a3b8;margin:0 0 24px;text-transform:uppercase;letter-spacing:.8px;">
+      Ativação do Sistema</p>
+    <div style="text-align:left;margin-bottom:16px;">
+      <label style="display:block;font-size:11px;font-weight:700;color:#64748b;
+        text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">
+        Código de Ativação</label>
+      <input type="password" id="ativacao-codigo" placeholder="Digite o código fornecido"
+        style="width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:11px 13px;
+        font-size:14px;color:#0f172a;background:#f8fafc;font-family:inherit;
+        transition:border .15s;box-sizing:border-box;"
+        onkeydown="if(event.key==='Enter')verificarAtivacao()"
+        onfocus="this.style.borderColor='#2563eb';" onblur="this.style.borderColor='#e2e8f0';">
+    </div>
+    <button id="btn-ativar" onclick="verificarAtivacao()"
+      style="width:100%;padding:13px;background:#2563eb;color:#fff;border:none;
+      border-radius:9px;font-size:15px;font-weight:700;cursor:pointer;">
+      Ativar Sistema →
+    </button>
+    <div id="ativacao-err" style="display:none;background:#fef2f2;color:#991b1b;
+      border-radius:7px;padding:9px 13px;font-size:12px;margin-top:12px;text-align:center;"></div>
+    <p style="font-size:11px;color:#cbd5e1;margin-top:20px;">
+      O código de ativação é fornecido pelo administrador do sistema.<br>Cada código tem validade definida e começa a contar no primeiro uso.</p>
+  </div>
+</div>
+
 <!-- TELA DE LOGIN -->
 <div id="login-screen">
   <div class="login-box">
@@ -757,6 +790,41 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     <button class="login-btn" onclick="fazerLogin()">Entrar →</button>
     <div class="login-err" id="login-err"></div>
     <div class="login-version">ChoppMaster ERP v3.1</div>
+  </div>
+</div>
+
+<div id="pra" style="display:none;"></div>
+
+<!-- PORTAL DO CLIENTE -->
+<div id="portal-screen" style="display:none;position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(135deg,#0F2044 0%,#1A3060 100%);overflow-y:auto;
+  font-family:'Segoe UI',system-ui,sans-serif;">
+  <div style="max-width:480px;margin:0 auto;padding:24px 16px 40px;">
+    <div style="text-align:center;padding:32px 0 24px;color:#fff;">
+      <h1 style="font-size:22px;font-weight:800;margin:0 0 4px;color:#93C5FD;">🍺 ChoppMaster</h1>
+      <p style="font-size:12px;color:#64748B;margin:0;letter-spacing:1px;text-transform:uppercase;">Portal do Cliente</p>
+    </div>
+    <div id="portal-login" style="background:#fff;border-radius:14px;padding:24px;margin-bottom:16px;box-shadow:0 8px 32px rgba(0,0,0,.3);">
+      <h2 style="font-size:15px;font-weight:700;color:#0F2044;margin:0 0 16px;padding-bottom:12px;border-bottom:1px solid #E2E8F0;">🔐 Acessar meu pedido</h2>
+      <div style="margin-bottom:12px;">
+        <label style="display:block;font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Seu número de WhatsApp</label>
+        <input type="tel" id="portal-tel" placeholder="(00) 00000-0000"
+          oninput="maskPortalTel(this)" maxlength="15"
+          onkeydown="if(event.key==='Enter')portalLogin()"
+          style="width:100%;border:1.5px solid #E2E8F0;border-radius:8px;padding:10px 12px;font-size:15px;color:#0F172A;background:#F8FAFC;box-sizing:border-box;">
+      </div>
+      <button onclick="portalLogin()"
+        style="width:100%;padding:13px;background:#2563EB;color:#fff;border:none;border-radius:9px;font-size:15px;font-weight:700;cursor:pointer;">
+        Acessar →
+      </button>
+      <div id="portal-login-err" style="display:none;background:#FEF2F2;color:#991B1B;border-radius:8px;padding:10px 14px;font-size:13px;margin-top:12px;text-align:center;"></div>
+    </div>
+    <div id="portal-pedido" style="display:none;">
+      <div id="portal-pedido-content"></div>
+      <div style="text-align:center;color:#475569;font-size:12px;padding-top:8px;">
+        Link válido até a retirada do equipamento.
+      </div>
+    </div>
   </div>
 </div>
 
@@ -972,87 +1040,14 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 <!-- MODAL MÁQUINA -->
 <div class="mo" id="mmaq">
   <div class="mb" style="max-width:480px;">
-    <div class="mh"><h3 id="mpt3">Nova Máquina</h3><button class="btn bgh bsm" onclick="closeM('mmaq')">✕</button></div>
-    <div class="mbody">
-      <input type="hidden" id="qid">
-      <div class="fi"><label>Nome *</label><input type="text" id="qn" placeholder="Ex: Chopeira Torre 50L Preta"></div>
-      <div class="g2">
-        <div class="fi"><label>Nº Série / Patrimônio</label><input type="text" id="qser" placeholder="Ex: CHM-001"></div>
-        <div class="fi"><label>Valor Diária R$</label><input type="number" id="qd" step="0.01" placeholder="0,00"></div>
-      </div>
-      <div class="fi"><label>Valor por Evento R$</label><input type="number" id="qev" step="0.01" placeholder="0,00"></div>
-      <div class="fi"><label>Descrição</label><textarea id="qds" placeholder="Detalhes da máquina..."></textarea></div>
-    </div>
-    <div class="mf"><button class="btn bs" onclick="closeM('mmaq')">Cancelar</button><button class="btn bp" onclick="salvaM()">💾 Salvar</button></div>
-  </div>
-</div>
+    <div class="mh"><h3 id="mpt3">Nova Máqui
 
-<!-- MODAL CLIENTE -->
-<div class="mo" id="mcli">
-  <div class="mb" style="max-width:500px;">
-    <div class="mh"><h3 id="mpt4">Novo Cliente</h3><button class="btn bgh bsm" onclick="closeM('mcli')">✕</button></div>
-    <div class="mbody">
-      <input type="hidden" id="cid">
-      <div class="fi"><label>Nome *</label><input type="text" id="cn" placeholder="Nome completo ou razão social"></div>
-      <div class="g2">
-        <div class="fi"><label>CPF / CNPJ</label><input type="text" id="cdoc" placeholder="000.000.000-00" maxlength="18"></div>
-        <div class="fi"><label>Telefone / WhatsApp</label><input type="text" id="ctel" placeholder="(00) 00000-0000" maxlength="15"></div>
-      </div>
-      <div class="fi"><label>E-mail</label><input type="email" id="ceml" placeholder="email@exemplo.com"></div>
-      <div class="fi"><label>Endereço</label><textarea id="cend" placeholder="Rua, nº, bairro, cidade, CEP"></textarea></div>
-      <div class="fi"><label>Observações</label><input type="text" id="cobs" placeholder="Observações adicionais..."></div>
-    </div>
-    <div class="mf"><button class="btn bs" onclick="closeM('mcli')">Cancelar</button><button class="btn bp" onclick="salvaC()">💾 Salvar</button></div>
-  </div>
-</div>
-
-<div id="pra"></div>
-
-<!-- PORTAL DO CLIENTE -->
-<div id="portal-screen">
-  <div class="portal-wrap">
-    <div class="portal-logo">
-      <h1>🍺 ChoppMaster</h1>
-      <p>Portal do Cliente</p>
-    </div>
-
-    <!-- Tela de login -->
-    <div id="portal-login" class="portal-card">
-      <h2>🔐 Acessar meu pedido</h2>
-      <div class="portal-field">
-        <label>Seu número de WhatsApp</label>
-        <input type="tel" id="portal-tel" placeholder="(00) 00000-0000"
-               oninput="maskPortalTel(this)" maxlength="15"
-               onkeydown="if(event.key==='Enter')portalLogin()">
-      </div>
-      <button class="portal-btn" onclick="portalLogin()">Acessar →</button>
-      <div id="portal-login-err" style="display:none;" class="portal-error"></div>
-    </div>
-
-    <!-- Tela do pedido (preenchida via JS) -->
-    <div id="portal-pedido" style="display:none;">
-      <div id="portal-pedido-content"></div>
-      <div class="portal-footer">
-        Link válido até a retirada do equipamento.<br>
-        Dúvidas? Entre em contato pelo WhatsApp.
-      </div>
-    </div>
-  </div>
-</div>
 <script>
-document.getElementById('lnc-pago').addEventListener('change',function(){
-  document.getElementById('lnc-dtpagto-wrap').style.display=this.checked?'block':'none';
-  if(this.checked&&!document.getElementById('lnc-dtpagto').value)document.getElementById('lnc-dtpagto').value=new Date().toISOString().slice(0,10);
-});
-document.getElementById('lnc-dtpagto-wrap').style.display='none';
-</script>
-<script>
-/* Helper: lê valor de campo sem quebrar se elemento não existir */
 function gEl(id){return document.getElementById(id)||{value:'',checked:false,style:{},textContent:'',innerHTML:'',classList:{add:function(){},remove:function(){},toggle:function(){}},addEventListener:function(){}};}
 function gVal(id){var e=document.getElementById(id);return e?e.value:'';}
 function sVal(id,v){var e=document.getElementById(id);if(e)e.value=v;}
 
-var DB={pedidos:[],produtos:[],maquinas:[],clientes:[],lancamentos:[],movimentos:[],alertas:[],solicitacoes:[],usuarios:[],config:{empresa:'ChoppMaster',responsavel:'',cpfCnpj:'',tel:'',cnpj:'',email:'',end:'',pix:'',termoVenda:'',termoLocacao:''}};
+var DB={pedidos:[],produtos:[],maquinas:[],clientes:[],lancamentos:[],movimentos:[],alertas:[],solicitacoes:[],usuarios:[],licenca:{codigos:[]},config:{empresa:'ChoppMaster',responsavel:'',cpfCnpj:'',tel:'',cnpj:'',email:'',end:'',pix:'',termoVenda:'',termoLocacao:''}};
 var _itens=[],_editId=null,_voltaCli=false,_voltaPed=false;
 
 function loadDB(){try{var s=localStorage.getItem('cm_v7')||localStorage.getItem('cm_v5');if(s)DB=JSON.parse(s);if(!DB.config)DB.config={empresa:'ChoppMaster',responsavel:'',cpfCnpj:'',tel:'',cnpj:'',email:'',end:'',pix:'',termoVenda:'',termoLocacao:''};if(!DB.alertas)DB.alertas=[];if(!DB.solicitacoes)DB.solicitacoes=[];if(!DB.usuarios)DB.usuarios=[];if(DB.config.responsavel===undefined)DB.config.responsavel='';if(DB.config.cpfCnpj===undefined)DB.config.cpfCnpj='';}catch(e){}}
@@ -1127,15 +1122,21 @@ function toast(msg,type){
 }
 
 function goTo(pg){
+  // Verificar permissão (exceto dashboard que é sempre acessível)
+  if(_authUser && pg!=='dashboard' && !temAcesso(pg)){
+    toast('Sem permissão para acessar este módulo.','err');
+    return;
+  }
   ['dashboard','calendario','pedidos','financeiro','produtos','maquinas','clientes','config'].forEach(function(p){
     var e=document.getElementById('pg-'+p);if(e)e.style.display='none';
     var n=document.getElementById('nv-'+p);if(n)n.classList.remove('on');
   });
-  document.getElementById('pg-'+pg).style.display='';
+  var pgEl=document.getElementById('pg-'+pg);
+  if(pgEl) pgEl.style.display='';
   var n=document.getElementById('nv-'+pg);if(n)n.classList.add('on');
   var T={dashboard:'Dashboard',calendario:'Calendário',pedidos:'Pedidos',financeiro:'Financeiro',produtos:'Produtos & Estoque',maquinas:'Máquinas',clientes:'Clientes',config:'Configurações'};
-  document.getElementById('ptitle').textContent=T[pg]||pg;
-  var a=document.getElementById('tacts');a.innerHTML='';
+  var ptEl=document.getElementById('ptitle');if(ptEl)ptEl.textContent=T[pg]||pg;
+  var a=document.getElementById('tacts');if(a)a.innerHTML='';
   if(pg==='pedidos'){
   var solCnt=countSolicitacoes();
   a.innerHTML='<button class="btn bp bsm" onclick="abrirPed()">+ Novo Pedido</button> '
@@ -1481,7 +1482,7 @@ function verPed(id){
   '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">'
   +'<div><div style="font-size:11px;color:#9a8060;text-transform:uppercase;font-weight:700;margin-bottom:4px;">Cliente</div><div style="font-weight:700;font-size:15px;">'+(c?c.nome:'—')+'</div>'+(c&&c.tel?'<div style="font-size:12px;color:#9a8060;">'+c.tel+'</div>':'')+'</div>'
   +'<div style="text-align:right;">'+bSt(st)+'<div style="font-size:22px;font-weight:800;color:var(--gd);margin-top:4px;">'+R$(p.total)+'</div>'+(p.desconto?'<div style="font-size:12px;color:#166534;">Desconto: -'+R$(p.desconto)+'</div>':'')+'</div></div>'
-  +'<div class="g3" style="margin-bottom:16px;font-size:12px;"><div><div style="color:#9a8060;font-weight:600;">Data</div>'+dBr(p.data)+'</div><div><div style="color:#9a8060;font-weight:600;">Entrega</div>'+dBr(p.entrega)+'</div><div><div style="color:#9a8060;font-weight:600;">Devolução</div>'+dBr(p.devolucao)+'</div>'+(p.local?'<div style="grid-column:span 3;margin-top:8px;"><div style="color:#9a8060;font-weight:600;">Local</div>'+p.local+'</div>':'')+'</div>'
+  +'<div class="g3" style="margin-bottom:16px;font-size:12px;"><div><div style="color:#9a8060;font-weight:600;">Data</div>'+dBr(p.data)+'</div><div><div style="color:#9a8060;font-weight:600;">Entrega</div>'+dBr(p.entrega)+'</div><div><div style="color:#9a8060;font-weight:600;">Devolução</div>'+dBr(p.devolucao)+'</div>'+(p.local?'<div style="grid-column:span 3;margin-top:8px;"><div style="color:#9a8060;font-weight:600;">Local</div>'+escHtml(p.local||'')+'</div>':'')+'</div>'
   +'<table class="tbl" style="margin-bottom:16px;"><thead><tr><th></th><th>Item</th><th>Qtd</th><th>Unit.</th><th>Total</th></tr></thead><tbody>'+itH+'</tbody></table>'
   +'<div style="background:#faf4e8;border:1px solid #e8d8b0;border-radius:10px;padding:14px;margin-bottom:16px;">'
   +(p.desconto?'<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;color:#9a8060;"><span>Subtotal</span><span>'+R$(p.subtotal||p.total+p.desconto)+'</span></div>'
@@ -1490,7 +1491,7 @@ function verPed(id){
   +'<div style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px;color:#166534;"><span>Recebido</span><span style="font-weight:700;">'+R$(pgT)+'</span></div>'
   +'<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800;border-top:1px solid #e8d8b0;padding-top:8px;margin-top:6px;color:'+(sl>0?'#991b1b':'#166534')+'"><span>Saldo</span><span>'+R$(sl)+'</span></div></div>'
   +((p.pagamentos||[]).length?'<div style="font-size:12px;font-weight:700;color:var(--br);margin-bottom:8px;">Pagamentos Recebidos</div>'+(p.pagamentos||[]).map(function(pg){return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid #f0e8d4;"><span>'+dBr(pg.data)+' — '+(pg.obs||pg.forma||'')+'</span><span style="font-weight:700;color:#166534;">'+R$(pg.valor)+'</span></div>';}).join(''):'')
-  +(p.obs?'<div style="margin-top:12px;font-size:12px;color:#9a8060;background:#f5f0e8;padding:10px;border-radius:8px;"><strong>Obs:</strong> '+p.obs+'</div>':'');
+  +(p.obs?'<div style="margin-top:12px;font-size:12px;color:#9a8060;background:#f5f0e8;padding:10px;border-radius:8px;"><strong>Obs:</strong> '+escHtml(p.obs||'')+'</div>':'');
   document.getElementById('mdf').innerHTML=
   '<button class="btn bs" onclick="closeM(\'mdt-mo\')">Fechar</button>'
   +(sl>0&&st!=='cancelado'?'<button class="btn bk" onclick="closeM(\'mdt-mo\');abrirRec(\''+p.id+'\')">💰 Receber</button>':'')
@@ -1654,7 +1655,15 @@ function salvaP(){
     renderItens();
   }
 }
-function exclP(id){if(!confirm('Excluir produto?'))return;DB.produtos=DB.produtos.filter(function(x){return x.id!==id;});saveDB();renderProds();}
+function exclP(id){
+  var em_uso=(DB.pedidos||[]).some(function(p){
+    return (p.itens||[]).some(function(i){return i.tipo==='produto'&&i.refId===id;});
+  });
+  if(em_uso){toast('Produto vinculado a pedidos. Não é possível excluir.','err');return;}
+  if(!confirm('Excluir produto?'))return;
+  DB.produtos=DB.produtos.filter(function(x){return x.id!==id;});
+  saveDB();renderProds();renderMovs();toast('Produto excluído.','ok');
+}
 function renderProds(){
   var ci={barril:'🍺',copo:'🥤',co2:'💨',outro:'📦'};var el=document.getElementById('lprod');
   if(!DB.produtos.length){el.innerHTML='<div style="padding:40px;text-align:center;color:#9a8060;">Nenhum produto. <button class="btn bp bsm" onclick="abrirProd()">+ Adicionar</button></div>';return;}
@@ -1746,7 +1755,13 @@ function salvaC(){
     sel.value=id;_voltaCli=false;openM('mpd');
   }
 }
-function exclC(id){if(!confirm('Excluir cliente?'))return;DB.clientes=DB.clientes.filter(function(x){return x.id!==id;});saveDB();renderClis();}
+function exclC(id){
+  var em_uso=(DB.pedidos||[]).some(function(p){return p.clienteId===id;});
+  if(em_uso){toast('Cliente possui pedidos vinculados. Não é possível excluir.','err');return;}
+  if(!confirm('Excluir cliente?'))return;
+  DB.clientes=DB.clientes.filter(function(x){return x.id!==id;});
+  saveDB();closeM('mcli');renderClis();toast('Cliente excluído.','ok');
+}
 function renderClis(){
   var bsc=(document.getElementById('cli-bsc')||{}).value||'';
   var clis=[].concat(DB.clientes);
@@ -1866,7 +1881,7 @@ function imprimirPed(id){
   +'<span style="font-size:13px;flex-shrink:0;">&#128204;</span>'
   +'<div>'
   +'<div style="font-size:7px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:.5px;">Local da Entrega</div>'
-  +'<div style="font-size:10px;font-weight:700;color:#0f2044;">'+p.local+'</div>'
+  +'<div style="font-size:10px;font-weight:700;color:#0f2044;">'+escHtml(p.local||'')+'</div>'
   +'</div></div>':'')
 
   /* ── TABELA DE ITENS ── */
@@ -1901,7 +1916,7 @@ function imprimirPed(id){
   /* ── OBSERVAÇÕES ── */
   +(p.obs?'<div style="background:#eff6ff;border-left:3px solid #2563eb;border-radius:0 5px 5px 0;padding:6px 10px;margin-bottom:8px;">'
   +'<div style="font-size:7px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">Observações</div>'
-  +'<div style="font-size:9px;color:#1e3a8a;">'+p.obs+'</div></div>':'')
+  +'<div style="font-size:9px;color:#1e3a8a;">'+escHtml(p.obs||'')+'</div></div>':'')
 
   /* ── TERMOS ── */
   +termoH+termoVH
@@ -1986,11 +2001,11 @@ function renderConfig(){
   h+='<div class="card" style="margin-bottom:20px;"><div class="ch" style="background:#eff6ff;"><h3 style="color:#1e40af;">&#9729; Sincroniza&ccedil;&atilde;o na Nuvem</h3>'+fbSt+'</div>';
   h+='<div class="cb"><div style="font-size:12px;color:#1e40af;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;margin-bottom:12px;line-height:1.7;">Crie um projeto gratuito em <strong>firebase.google.com</strong> &rarr; Firestore &rarr; cole as credenciais abaixo para sincronizar dados entre dispositivos.</div>';
   h+='<div class="g2"><div class="fi"><label>Project ID</label><input type="text" id="cfg-fb-pid" value="'+escHtml(cfg.fbPid||"")+'" placeholder="meu-projeto-12345"></div>';
-  h+='<div class="fi"><label>API Key</label><input type="text" id="cfg-fb-key" value="'+escHtml(cfg.fbKey||"")+'" placeholder="AIzaSy..."></div></div>';
+  h+='<div class="fi"><label>API Key</label><input type="text" id="cfg-fb-key" value="'+escHtml(cfg.fbKey||"")+'" placeholder="Cole sua API Key aqui"></div></div>';
   h+='</div></div>';
-  h+='<div style="text-align:right;margin-bottom:40px;"><button class="btn bp" style="padding:12px 28px;font-size:14px;" onclick="salvaConfig()">&#128190; Salvar Configura&ccedil;&otilde;es</button></div></div>';
+  h+='</div>';
   // Seção de usuários (só admin)
-  if(_authUser&&_authUser.perfil==='admin'){
+  if(_authUser&&(_authUser.admin===true||_authUser.perfil==='admin')){
     h+='<div class="card" style="margin-bottom:20px;">';
     h+='<div class="ch"><h3>&#128100; Usu&aacute;rios do Sistema</h3>';
     h+='<span style="font-size:11px;color:var(--silver3);">Quem pode acessar o ChoppMaster</span></div>';
@@ -2021,15 +2036,15 @@ function salvaConfig(){
   DB.config.fbKey=gv("cfg-fb-key");
   DB.config.termoVenda=gv("cfg-tv");
   DB.config.termoLocacao=gv("cfg-tl");
-  console.log('salvaConfig: fbPid='+DB.config.fbPid+' fbKey='+DB.config.fbKey.slice(0,8));
+  // [prod]
   saveDB();
   if(DB.config.fbPid&&DB.config.fbKey){
     fbStatus('Conectando...','#854d0e');
     var ok=fbInit();
-    console.log('fbInit retornou:',ok);
+    // [prod]
     if(ok){
       fbLoad(function(success){
-        console.log('fbLoad callback:',success);
+        // [prod]
         if(success){
           toast("Firebase conectado! Dados sincronizados","ok");
         } else {
@@ -2337,12 +2352,12 @@ function renderPortalPedido(p){
     + '<div class="portal-card">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'
     + '<div><div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:.5px;">Pedido #'+p.num+'</div>'
-    + '<div style="font-size:16px;font-weight:700;color:#0F2044;">'+cli.nome+'</div></div>'
+    + '<div style="font-size:16px;font-weight:700;color:#0F2044;">'+escHtml(cli.nome||'')+'</div></div>'
     + pgBadge
     + '</div>'
     + (p.local ? '<div style="background:#EFF6FF;border-left:3px solid #2563EB;border-radius:0 6px 6px 0;padding:8px 12px;margin-bottom:10px;font-size:13px;">'
       + '<div style="font-size:10px;color:#1E40AF;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">📍 Local da Entrega</div>'
-      + '<div style="color:#0F2044;font-weight:600;">'+p.local+'</div></div>' : '')
+      + '<div style="color:#0F2044;font-weight:600;">'+escHtml(p.local||'')+'</div></div>' : '')
     + itensH
     + '<div style="display:flex;justify-content:space-between;padding:10px 0 0;font-size:14px;font-weight:700;color:#0F2044;border-top:2px solid #E2E8F0;margin-top:8px;">'
     + '<span>Total</span><span>R$ '+N$(p.total)+'</span></div>'
@@ -2536,9 +2551,9 @@ function renderSolicitacoes(){
       html += '<div style="padding:14px 18px;border-bottom:1px solid var(--border);">'
         + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">'
         + '<div style="flex:1;">'
-        + '<div style="font-weight:700;font-size:14px;color:var(--dk);">'+s.nome+'</div>'
+        + '<div style="font-weight:700;font-size:14px;color:var(--dk);">'+escHtml(s.nome||'')+'</div>'
         + '<div style="font-size:12px;color:var(--silver3);">'+s.tel+' · Entrega: '+dBr(s.entrega)+(s.hora?' às '+s.hora+'h':'')+'</div>'
-        + '<div style="font-size:12px;color:var(--silver3);">📍 '+s.local+'</div>'
+        + '<div style="font-size:12px;color:var(--silver3);">📍 '+escHtml(s.local||'')+'</div>'
         + '<div style="font-size:12px;color:var(--dk2);margin-top:4px;">'+itensStr+'</div>'
         + (s.obs ? '<div style="font-size:12px;color:var(--silver3);margin-top:2px;">Obs: '+s.obs+'</div>' : '')
         + '</div>'
@@ -2618,6 +2633,154 @@ function recusarSolicitacao(id){
 }
 
 
+
+/* ===== SISTEMA DE ATIVAÇÃO / LICENÇA ===== */
+/* Integrado com Firebase externo: codigos-acessos-sistemas */
+var _ATIV_STORAGE       = 'cm_ativ_v1';
+var _ATIV_FB_PID        = 'codigos-acessos-sistemas';
+var _ATIV_FB_KEY        = 'AIzaSyDHVtbaNFruxyVM9V8T4oKitiIh6QyV99c';
+var _ATIV_FB_BASE       = 'https://firestore.googleapis.com/v1/projects/codigos-acessos-sistemas/databases/(default)/documents/codigos/';
+var _ativacaoFails      = 0;
+var _ativacaoBlockedUntil = 0;
+
+/* Verifica se este dispositivo já foi ativado e ainda é válido */
+function checkAtivacao(){
+  var stored = null;
+  try{ stored = JSON.parse(localStorage.getItem(_ATIV_STORAGE)||'null'); }catch(e){}
+  if(!stored || !stored.codigo || !stored.expiraEm) return false;
+  // Verificar se ainda não expirou localmente
+  if(new Date(stored.expiraEm).getTime() > Date.now()) return true;
+  // Expirou — limpar e pedir novo código
+  localStorage.removeItem(_ATIV_STORAGE);
+  return false;
+}
+
+function mostrarAtivacao(){
+  var el=document.getElementById('ativacao-screen');
+  if(el) el.style.display='flex';
+  setTimeout(function(){
+    var i=document.getElementById('ativacao-codigo');if(i)i.focus();
+  },200);
+}
+
+function esconderAtivacao(){
+  var el=document.getElementById('ativacao-screen');
+  if(el) el.style.display='none';
+}
+
+function showAtivErr(msg){
+  var el=document.getElementById('ativacao-err');
+  if(el){el.textContent=msg;el.style.display='block';}
+}
+
+function verificarAtivacao(){
+  if(_ativacaoBlockedUntil > Date.now()){
+    var seg=Math.ceil((_ativacaoBlockedUntil-Date.now())/1000);
+    showAtivErr('Muitas tentativas. Aguarde '+seg+'s.');
+    return;
+  }
+  var codigo=(document.getElementById('ativacao-codigo').value||'').trim();
+  var errEl=document.getElementById('ativacao-err');
+  if(errEl) errEl.style.display='none';
+  if(!codigo){showAtivErr('Digite o código de ativação.');return;}
+
+  // Mostrar loading
+  var btn=document.getElementById('btn-ativar');
+  if(btn){btn.disabled=true;btn.textContent='Verificando...';}
+
+  var url = _ATIV_FB_BASE + encodeURIComponent(codigo) + '?key=' + _ATIV_FB_KEY;
+
+  fetch(url)
+    .then(function(r){
+      if(r.status===404){
+        throw {tipo:'invalido', msg:'Código não encontrado. Verifique e tente novamente.'};
+      }
+      if(!r.ok) throw {tipo:'erro', msg:'Erro ao verificar código (HTTP '+r.status+'). Tente novamente.'};
+      return r.json();
+    })
+    .then(function(doc){
+      var fields = doc.fields||{};
+
+      // Verificar se código está ativo
+      var ativo = fields.ativo && fields.ativo.booleanValue;
+      if(!ativo){
+        throw {tipo:'revogado', msg:'Este código foi desativado. Solicite um novo código ao fornecedor.'};
+      }
+
+      // Verificar validade
+      var expiraEm = fields.expiraEm && (fields.expiraEm.timestampValue || fields.expiraEm.stringValue);
+      var primeiraAtivacao = fields.primeiraAtivacaoEm && (fields.primeiraAtivacaoEm.timestampValue || fields.primeiraAtivacaoEm.stringValue);
+
+      if(primeiraAtivacao && expiraEm){
+        // Código já foi ativado antes — verificar se ainda é válido
+        var expiraTs = new Date(expiraEm).getTime();
+        if(expiraTs <= Date.now()){
+          throw {tipo:'expirado', msg:'Este código expirou em '+new Date(expiraEm).toLocaleDateString('pt-BR')+'. Solicite um novo código.'};
+        }
+        // Válido — salvar localmente e ativar
+        ativarLocalmente(codigo, expiraEm);
+        return;
+      }
+
+      // Primeiro uso — registrar no Firebase e ativar
+      var agora = new Date().toISOString();
+      var duracaoSeg = fields.duracaoSegundos
+        ? (fields.duracaoSegundos.integerValue || fields.duracaoSegundos.doubleValue || 0)
+        : 0;
+      var novoExpiraEm = expiraEm || new Date(Date.now() + duracaoSeg*1000).toISOString();
+
+      // PATCH para registrar primeiro uso
+      var patchUrl = _ATIV_FB_BASE + encodeURIComponent(codigo)
+        + '?key=' + _ATIV_FB_KEY
+        + '&updateMask.fieldPaths=primeiraAtivacaoEm';
+
+      fetch(patchUrl, {
+        method:'PATCH',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({fields:{primeiraAtivacaoEm:{timestampValue:agora}}})
+      }).catch(function(){/* ignora erro do patch — ativação continua */});
+
+      ativarLocalmente(codigo, novoExpiraEm);
+    })
+    .catch(function(err){
+      if(btn){btn.disabled=false;btn.textContent='Ativar Sistema →';}
+      _ativacaoFails++;
+      if(_ativacaoFails>=5){
+        _ativacaoBlockedUntil=Date.now()+5*60*1000;
+        _ativacaoFails=0;
+        showAtivErr('5 tentativas inválidas. Aguarde 5 minutos.');
+      } else {
+        var msg = err.msg || 'Erro ao verificar código. Tente novamente.';
+        showAtivErr(msg + (err.tipo&&err.tipo!=='invalido'?'':' ('+_ativacaoFails+'/5)'));
+      }
+      document.getElementById('ativacao-codigo').value='';
+    });
+}
+
+function ativarLocalmente(codigo, expiraEm){
+  localStorage.setItem(_ATIV_STORAGE, JSON.stringify({
+    codigo:   codigo,
+    expiraEm: expiraEm,
+    ativadoEm: new Date().toISOString()
+  }));
+  _ativacaoFails=0;
+  esconderAtivacao();
+  var btn=document.getElementById('btn-ativar');
+  if(btn){btn.disabled=false;btn.textContent='Ativar Sistema →';}
+  iniciarSistema();
+}
+
+function iniciarSistema(){
+  garantirAdminPadrao().then(function(){
+    if(!checkAuth()) return;
+    try{
+      if(fbInit()){fbLoad(function(){aplicarPermissoes();initMasks();goTo('dashboard');});}
+      else{aplicarPermissoes();initMasks();goTo('dashboard');}
+    }catch(e){aplicarPermissoes();initMasks();goTo('dashboard');}
+  });
+}
+
+
 /* ===== AUTENTICAÇÃO ===== */
 var _authUser = null; // usuário logado na sessão
 
@@ -2629,14 +2792,26 @@ async function sha256(msg){
 
 /* Garante usuário admin padrão se DB.usuarios estiver vazio */
 async function garantirAdminPadrao(){
-  if(!DB.usuarios)DB.usuarios=[];
+  if(!DB.usuarios) DB.usuarios=[];
+  var TODOS_MODULOS = ['dashboard','calendario','pedidos','financeiro','produtos','maquinas','clientes','config'];
+  // Migrar usuários antigos que não têm admin/modulos
+  var migrou = false;
+  DB.usuarios.forEach(function(u){
+    if(u.admin===undefined && u.perfil==='admin'){
+      u.admin=true; u.modulos=TODOS_MODULOS.slice(); migrou=true;
+    }
+    if(u.admin===undefined){ u.admin=false; migrou=true; }
+    if(!u.modulos){ u.modulos=u.admin?TODOS_MODULOS.slice():['dashboard','pedidos','clientes']; migrou=true; }
+    if(u.ativo===undefined){ u.ativo=true; migrou=true; }
+  });
+  if(migrou) saveDB();
+  // Criar admin padrão se não existir nenhum usuário
   if(DB.usuarios.length===0){
     var hash = await sha256('chopp123');
     DB.usuarios.push({
       id:uid(), nome:'Administrador', login:'admin',
       senhaHash:hash, admin:true,
-      modulos:['dashboard','calendario','pedidos','financeiro','produtos','maquinas','clientes','config'],
-      ativo:true
+      modulos:TODOS_MODULOS.slice(), ativo:true
     });
     saveDB();
   }
@@ -2647,7 +2822,14 @@ function checkAuth(){
   var sess = null;
   try{ sess = JSON.parse(sessionStorage.getItem('cm_auth')||'null'); }catch(e){}
   if(sess && sess.id && sess.exp > Date.now()){
+    // Recarregar admin e modulos do DB (sessão pode ser antiga)
+    var dbUser = (DB.usuarios||[]).find(function(u){return u.id===sess.id;});
+    if(dbUser){
+      sess.admin   = dbUser.admin===true;
+      sess.modulos = dbUser.modulos||[];
+    }
     _authUser = sess;
+    esconderLogin();
     atualizarUserInfo();
     return true;
   }
@@ -2660,8 +2842,8 @@ function mostrarLogin(){
   document.getElementById('login-screen').classList.add('active');
   var mn=document.getElementById('mn');var sb=document.getElementById('sb');
   var bn=document.getElementById('bottom-nav');
-  if(mn)mn.style.visibility='hidden';
-  if(sb)sb.style.visibility='hidden';
+  if(mn)mn.style.display='none';
+  if(sb)sb.style.display='none';
   if(bn)bn.style.display='none';
   setTimeout(function(){
     var el=document.getElementById('auth-login');if(el)el.focus();
@@ -2672,16 +2854,27 @@ function esconderLogin(){
   document.getElementById('login-screen').classList.remove('active');
   var mn=document.getElementById('mn');var sb=document.getElementById('sb');
   var bn=document.getElementById('bottom-nav');
-  if(mn)mn.style.visibility='';
-  if(sb)sb.style.visibility='';
+  if(mn)mn.style.display='';
+  if(sb)sb.style.display='';
   if(bn)bn.style.display='block';
 }
+
+var _loginFails = 0;
+var _loginBlockedUntil = 0;
 
 function fazerLogin(){
   var loginVal = (document.getElementById('auth-login').value||'').trim().toLowerCase();
   var senhaVal = document.getElementById('auth-senha').value||'';
   var errEl    = document.getElementById('login-err');
   errEl.style.display='none';
+
+  // Verificar bloqueio por tentativas
+  if(_loginBlockedUntil > Date.now()){
+    var seg = Math.ceil((_loginBlockedUntil - Date.now())/1000);
+    errEl.textContent='Muitas tentativas. Aguarde '+seg+'s para tentar novamente.';
+    errEl.style.display='block';
+    return;
+  }
 
   if(!loginVal||!senhaVal){
     errEl.textContent='Preencha o login e a senha.';
@@ -2699,7 +2892,14 @@ function fazerLogin(){
       return u.login.toLowerCase()===loginVal && u.senhaHash===hash && u.ativo;
     });
     if(!user){
-      errEl.textContent='Login ou senha incorretos. Tente novamente.';
+      _loginFails++;
+      if(_loginFails >= 5){
+        _loginBlockedUntil = Date.now() + 60*1000; // 60 segundos
+        _loginFails = 0;
+        errEl.textContent='5 tentativas incorretas. Aguarde 60s.';
+      } else {
+        errEl.textContent='Login ou senha incorretos. Tentativa '+_loginFails+'/5.';
+      }
       errEl.style.display='block';
       document.getElementById('auth-senha').value='';
       document.getElementById('auth-senha').focus();
@@ -2707,9 +2907,13 @@ function fazerLogin(){
     }
     // Sessão válida por 8 horas
     var sess = {id:user.id, nome:user.nome, login:user.login,
-                perfil:user.perfil, exp:Date.now()+8*60*60*1000};
+                perfil:user.perfil,
+                admin:user.admin===true,
+                modulos:user.modulos||[],
+                exp:Date.now()+8*60*60*1000};
     sessionStorage.setItem('cm_auth', JSON.stringify(sess));
     _authUser = sess;
+    _loginFails = 0; _loginBlockedUntil = 0; // reset brute force
     esconderLogin();
     atualizarUserInfo();
     aplicarPermissoes();
@@ -2746,52 +2950,22 @@ function temAcesso(modulo){
 
 function aplicarPermissoes(){
   if(!_authUser) return;
-  var isAdmin = _authUser.admin;
-  // Sidebar links — mostrar/ocultar conforme permissão
-  var mapa = {
-    'nv-dashboard':   'dashboard',
-    'nv-calendario':  'calendario',
-    'nv-pedidos':     'pedidos',
-    'nv-financeiro':  'financeiro',
-    'nv-config':      'config',
+  // Mapa de id_do_elemento → modulo
+  var todos = {
+    'nv-dashboard':'dashboard','nv-calendario':'calendario',
+    'nv-pedidos':'pedidos','nv-financeiro':'financeiro',
+    'nv-produtos':'produtos','nv-maquinas':'maquinas',
+    'nv-clientes':'clientes','nv-config':'config',
+    'bn-dashboard':'dashboard','bn-calendario':'calendario',
+    'bn-pedidos':'pedidos','bn-financeiro':'financeiro',
   };
-  // Produtos, Máquinas, Clientes ficam no submenu (sidebar desktop)
-  var submapa = {
-    'nv-produtos':    'produtos',
-    'nv-maquinas':    'maquinas',
-    'nv-clientes':    'clientes',
-  };
-  Object.keys(mapa).forEach(function(id){
-    var el = document.getElementById(id);
-    if(el) el.style.display = temAcesso(mapa[id]) ? '' : 'none';
+  Object.keys(todos).forEach(function(elId){
+    var el=document.getElementById(elId);
+    if(el) el.style.display = temAcesso(todos[elId]) ? '' : 'none';
   });
-  Object.keys(submapa).forEach(function(id){
-    var el = document.getElementById(id);
-    if(el) el.style.display = temAcesso(submapa[id]) ? '' : 'none';
-  });
-  // Bottom nav
-  var bnMapa = {
-    'bn-dashboard':  'dashboard',
-    'bn-calendario': 'calendario',
-    'bn-pedidos':    'pedidos',
-    'bn-financeiro': 'financeiro',
-  };
-  Object.keys(bnMapa).forEach(function(id){
-    var el = document.getElementById(id);
-    if(el) el.style.display = temAcesso(bnMapa[id]) ? '' : 'none';
-  });
-  // Proteger goTo: redirecionar se tentar acessar módulo sem permissão
 }
 
-/* Intercepta goTo para verificar permissão */
-var _goToOriginal = goTo;
-function goTo(pg){
-  if(_authUser && pg !== 'dashboard' && !temAcesso(pg)){
-    toast('Sem permissão para acessar este módulo.','err');
-    return;
-  }
-  _goToOriginal(pg);
-}
+/* Verificação de permissão integrada diretamente no goTo principal */
 
 /* ── GERENCIAMENTO DE USUÁRIOS (Admin) ── */
 var _editUserId=null;
@@ -2816,7 +2990,7 @@ function renderUsuarios(){
       +'</tr></thead><tbody>';
     users.forEach(function(u){
       h+='<tr>'
-        +'<td><strong>'+u.nome+'</strong></td>'
+        +'<td><strong>'+escHtml(u.nome||'')+'</strong></td>'
         +'<td style="font-family:monospace;font-size:12px;">'+u.login+'</td>'
         +'<td><span class="badge '+(u.perfil==='admin'?'bgb':u.perfil==='financeiro'?'bgy':'bgr')+'">'+(perfilLabel[u.perfil]||u.perfil)+'</span></td>'
         +'<td><span class="badge '+(u.ativo?'bgr':'bgg')+'">'+(u.ativo?'Ativo':'Inativo')+'</span></td>'
@@ -3377,15 +3551,13 @@ if(checkSolicitarMode()){
 } else if(checkPortalMode()){
   // Modo portal — não inicializar sistema principal
 } else {
+  // VERIFICAR ATIVAÇÃO/LICENÇA PRIMEIRO
+  if(!checkAtivacao()){
+    mostrarAtivacao();
+  } else {
   // Garantir admin padrão e depois verificar auth
-  garantirAdminPadrao().then(function(){
-    if(!checkAuth()) return; // mostra login
-    try{
-      if(fbInit()){
-        fbLoad(function(){aplicarPermissoes();initMasks();goTo('dashboard');});
-      }else{aplicarPermissoes();initMasks();goTo('dashboard');}
-    }catch(e){console.warn('startup:',e);aplicarPermissoes();initMasks();goTo('dashboard');}
-  });
+  iniciarSistema();
+  } // fim checkAtivacao
 }
 </script>
 
@@ -3418,7 +3590,7 @@ self.addEventListener('fetch', function(e){
   var blob = new Blob([swCode], {type:'application/javascript'});
   var swUrl = URL.createObjectURL(blob);
   navigator.serviceWorker.register(swUrl).then(function(reg){
-    console.log('SW registrado:', reg.scope);
+    // [prod]
   }).catch(function(e){
     console.warn('SW erro:', e.message);
   });
@@ -3442,11 +3614,14 @@ function installPWA(){
   if(_pwaPrompt){
     _pwaPrompt.prompt();
     _pwaPrompt.userChoice.then(function(r){
-      if(r.outcome==='accepted') console.log('PWA instalado');
+      if(r.outcome==='accepted') // [prod]
       _pwaPrompt = null;
     });
   }
 }
+</script>
+
+
 </script>
 </body>
 </html>
