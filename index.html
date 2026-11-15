@@ -4717,6 +4717,20 @@ function masterDemo(){
   dlg('🧪 Modo de teste',c,bots);
 }
 
+/* ---- OLHO PARA VER A SENHA (vale para todo campo de senha) ---- */
+function olhoSenha(i){
+  if(!i||i._olho||!i.parentNode)return;i._olho=true;
+  var w=document.createElement('span');w.style.cssText='position:relative;display:block;width:100%;';
+  i.parentNode.insertBefore(w,i);w.appendChild(i);
+  try{i.style.paddingRight='44px';i.style.boxSizing='border-box';}catch(e){}
+  var b=document.createElement('button');b.type='button';b.textContent='👁';b.title='Mostrar senha';b.setAttribute('aria-label','Mostrar senha');b.tabIndex=-1;
+  b.style.cssText='position:absolute;right:4px;top:50%;transform:translateY(-50%);width:38px;height:38px;border:none;background:none;cursor:pointer;font-size:17px;line-height:1;padding:0;opacity:.65;';
+  b.onclick=function(ev){ev.preventDefault();ev.stopPropagation();var ver=i.type==='password';i.type=ver?'text':'password';b.textContent=ver?'🙈':'👁';b.title=ver?'Esconder senha':'Mostrar senha';b.setAttribute('aria-label',b.title);b.style.opacity=ver?'1':'.65';try{i.focus();}catch(e){}};
+  w.appendChild(b);
+}
+function olhoSenhaTodos(raiz){try{(raiz||document).querySelectorAll('input[type="password"]').forEach(olhoSenha);}catch(e){}}
+(function(){function ini(){olhoSenhaTodos(document);try{new MutationObserver(function(ms){ms.forEach(function(m){(m.addedNodes||[]).forEach(function(n){if(n.nodeType!==1)return;if(n.matches&&n.matches('input[type="password"]'))olhoSenha(n);else olhoSenhaTodos(n);});});}).observe(document.body,{childList:true,subtree:true});}catch(e){}}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ini);else ini();})();
 /* ---- PAINEL DO GESTOR ---- */
 function _soGestor(){return _authUser&&_authUser.isMaster===true;}
 var _mTab='resumo',_mRegs=[],_mFin=[],_mCal=null,_vFil={dist:'',per:'mes',de:'',ate:'',tipo:'',q:''},_fFil={per:'mes'};
