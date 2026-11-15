@@ -955,7 +955,8 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     <button class="login-btn" onclick="fazerLogin()">Entrar →</button>
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
-    <div class="login-version">ChoppMaster ERP v3.1</div>
+    <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão com o Firebase</a></div>
+    <div class="login-version">ChoppMaster ERP v3.2 · 15/11</div>
   </div>
 </div>
 
@@ -3183,6 +3184,7 @@ function loadDB(){
     var s=localStorage.getItem(key)||localStorage.getItem('cm_v7');
     if(s)DB=JSON.parse(s);
     if(!DB.config)DB.config={empresa:'ChoppMaster',responsavel:'',cpfCnpj:'',tel:'',cnpj:'',email:'',end:'',pix:'',termoVenda:'',termoLocacao:''};
+    ['pedidos','produtos','maquinas','clientes','lancamentos','movimentos'].forEach(function(k){if(!Array.isArray(DB[k]))DB[k]=[];});
     if(!DB.alertas)DB.alertas=[];
     if(!DB.solicitacoes)DB.solicitacoes=[];
     if(!DB.usuarios)DB.usuarios=[];
@@ -4044,7 +4046,7 @@ function fbCred(){
 function fsBase(){return 'https://firestore.googleapis.com/v1/projects/'+encodeURIComponent(fbCred().pid)+'/databases/(default)/documents/';}
 function fsGet(path){
   var u=fsBase()+path+(path.indexOf('?')<0?'?':'&')+'key='+encodeURIComponent(fbCred().key);
-  return fetch(u).then(function(r){if(r.status===404)return null;if(!r.ok)throw new Error('HTTP '+r.status);return r.json();});
+  return fetch(u).then(function(r){if(r.status===404)return r.text().then(function(t){if(/database|project/i.test(t)&&!/Document/i.test(t))throw new Error('HTTP 404 banco');return null;});if(!r.ok)throw new Error('HTTP '+r.status);return r.json();});
 }
 function fsPatch(path,fields,mask){
   var u=fsBase()+path+'?key='+encodeURIComponent(fbCred().key)+(mask||[]).map(function(m){return '&updateMask.fieldPaths='+encodeURIComponent(m);}).join('');
@@ -4123,13 +4125,24 @@ function linkSistema(){return window.location.href.split('?')[0].split('#')[0];}
 /* ---- login ---- */
 async function loginDistribuidora(cod,loginVal,senhaVal){
   var reg=null, offline=false, dados=null;
-  try{var d=await fsGet('gestao_distribuidoras/'+cod);if(!d) return {erro:'Código de distribuidora não encontrado.',falha:true};reg=regParse(d);}catch(e){offline=true;}
+  var _erroFb='';
+  try{var d=await fsGet('gestao_distribuidoras/'+cod);
+    if(!d){ /* não está no Firebase: se foi cadastrada no modo de teste neste aparelho, envia agora */
+      var _st=demoStore(),_rg=_st['gestao_distribuidoras/'+cod];
+      if(_rg&&_rg.demo!==true){
+        try{var _dd=_st[dataPathDist(cod)];if(_dd)await fsPatch(dataPathDist(cod),fsFields(_dd));await fsPatch('gestao_distribuidoras/'+cod,fsFields(_rg));
+          delete _st['gestao_distribuidoras/'+cod];delete _st[dataPathDist(cod)];demoSave(_st);d=await fsGet('gestao_distribuidoras/'+cod);}
+        catch(e2){return {erro:'Esta distribuidora foi cadastrada no modo de teste e o Firebase recusou o envio ('+(e2.message||e2)+'). Toque em "Testar conexão com o Firebase" abaixo.'};}
+      }
+      if(!d) return {erro:'Código de distribuidora não encontrado no Firebase. Se ela foi cadastrada no modo de teste, entre neste mesmo aparelho em que cadastrou.',falha:true};
+    }
+    reg=regParse(d);}catch(e){offline=true;_erroFb=e.message||String(e);}
   if(reg){var st=statusDist(reg);if(st.bloqueada) return {erro:st.msg};}
   if(!offline){
     try{var dd=await fsGet(dataPathDist(cod));if(dd&&dd.fields){dados={};Object.keys(dd.fields).forEach(function(k){dados[k]=fromFirestore(dd.fields[k]);});}}catch(e){offline=true;}
   }
   if(!dados){var loc=localStorage.getItem('cm_dist_'+cod);if(loc){try{dados=JSON.parse(loc);}catch(e){}}}
-  if(!dados) return {erro:offline?'Sem conexão e sem dados salvos neste aparelho.':'Distribuidora sem dados. Fale com o gestor.'};
+  if(!dados) return {erro:offline?('Não consegui falar com o Firebase'+(_erroFb?' ('+_erroFb+')':'')+'. Toque em "Testar conexão com o Firebase" abaixo.'):'Distribuidora sem dados. Fale com o gestor.'};
   if(reg){var st2=statusDist(reg,vendasPorMes(dados.pedidos));if(st2.bloqueada) return {erro:st2.msg};}
   var us=(dados.usuarios||[]).filter(function(u){return String(u.login||'').toLowerCase()===loginVal&&u.ativo!==false;})[0];
   if(!us||!(await confereSenha(senhaVal,us.senhaHash))) return {erro:'Código, login ou senha incorretos.',falha:true};
@@ -4189,7 +4202,8 @@ async function fazerLogin(){
     goTo(sess.isMaster?'master':'dashboard');
     verificarTrocaObrigatoria();
   } catch(e){
-    erro('Não foi possível entrar. Verifique a internet e tente de novo.');
+    try{console.error('login',e);}catch(x){}
+    erro('Não foi possível entrar ('+((e&&e.message)||e)+'). Tente de novo.');
   } finally {
     if(btn){btn.disabled=false;btn.textContent='Entrar →';}
   }
@@ -4694,6 +4708,7 @@ function demoFetch(path,url,opt){
   if(!d)return Promise.resolve(new Response('{}',{status:404}));
   return ok(d);
 }
+var _fetchReal=window.fetch.bind(window);
 (function(){var _of=window.fetch;if(!_of||window.__demoFetch)return;window.__demoFetch=true;
   window.fetch=function(url,opt){try{if(demoOn()){var path=demoCaminho(typeof url==='string'?url:(url&&url.url));if(path!==null)return demoFetch(path,typeof url==='string'?url:url.url,opt||{});}}catch(e){}return _of.apply(this,arguments);};
 })();
@@ -4758,6 +4773,34 @@ function olhoSenha(i){
 function olhoSenhaTodos(raiz){try{(raiz||document).querySelectorAll('input[type="password"]').forEach(olhoSenha);}catch(e){}}
 (function(){function ini(){olhoSenhaTodos(document);try{new MutationObserver(function(ms){ms.forEach(function(m){(m.addedNodes||[]).forEach(function(n){if(n.nodeType!==1)return;if(n.matches&&n.matches('input[type="password"]'))olhoSenha(n);else olhoSenhaTodos(n);});});}).observe(document.body,{childList:true,subtree:true});}catch(e){}}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ini);else ini();})();
+/* ---- TESTE DE CONEXÃO COM O FIREBASE (tela de login) ---- */
+async function testarConexao(){
+  var cr=fbCred(),c=_el('div','');
+  function lin(t,cor){c.appendChild(_el('p','margin:0 0 8px;font-size:13px;line-height:1.55;color:'+(cor||'#334155')+';',t));}
+  lin('Projeto: '+cr.pid);
+  var api=dlg('🔌 Teste de conexão',c,[{txt:'Fechar',cls:'bp',fn:function(a){a.fechar();}}]);
+  var st=_el('p','margin:0;font-size:13px;color:#64748B;','Testando...');c.appendChild(st);
+  function explica(code,txt){
+    if(code===0)return 'Sem internet, ou o navegador bloqueou o acesso.';
+    if(/API key not valid|API_KEY_INVALID/i.test(txt))return 'A chave de API não é válida para este projeto.';
+    if(/CONSUMER_INVALID|has not been used|SERVICE_DISABLED|disabled/i.test(txt))return 'O projeto não existe com esse nome, ou o Firestore não está ligado nele.';
+    if(/referer|referrer|blocked|API_KEY_HTTP_REFERRER_BLOCKED|API_KEY_SERVICE_BLOCKED/i.test(txt))return 'A chave de API está com restrição e não aceita este site.';
+    if(code===403)return 'As REGRAS do Firebase não liberam o acesso. Confira se foram publicadas neste projeto.';
+    if(code===404)return 'O banco de dados Firestore ainda não foi criado neste projeto (no console: Firestore Database → Criar banco de dados).';
+    return 'Erro '+code+'.';
+  }
+  var base=fsBase(),k='?key='+encodeURIComponent(cr.key),code=0,txt='';
+  try{var r=await _fetchReal(base+'gestao_distribuidoras'+k+'&pageSize=100');code=r.status;txt=await r.text();}catch(e){code=0;txt=String(e);}
+  st.remove();
+  if(code!==200){lin('❌ LER: falhou. '+explica(code,txt),'#991B1B');lin('Detalhe técnico: '+code+' '+txt.replace(/\s+/g,' ').slice(0,220),'#94A3B8');return;}
+  var docs=[];try{docs=(JSON.parse(txt).documents||[]).map(function(d){return d.name.split('/').pop();}).filter(function(x){return x.charAt(0)!=='_';});}catch(e){}
+  lin('✅ LER: funcionando. Distribuidoras no Firebase: '+(docs.length?docs.join(', '):'nenhuma ainda.'),'#065F46');
+  code=0;txt='';
+  try{var w=await _fetchReal(base+'gestao_distribuidoras/_teste_conexao'+k,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields:{quando:{stringValue:new Date().toISOString()}}})});code=w.status;txt=await w.text();}catch(e){code=0;txt=String(e);}
+  if(code===200)lin('✅ GRAVAR: funcionando.','#065F46');else{lin('❌ GRAVAR: falhou. '+explica(code,txt),'#991B1B');lin('Detalhe técnico: '+code+' '+txt.replace(/\s+/g,' ').slice(0,220),'#94A3B8');}
+  var loc=[];try{loc=demoLocaisReais();}catch(e){}
+  if(loc.length)lin('📱 Guardadas só neste aparelho (cadastradas no modo de teste): '+loc.map(function(x){return x.nome+' ('+x.id+')';}).join(', ')+'. Elas são enviadas ao Firebase quando você faz o login delas aqui, ou pelo gestor em "Dados de teste" → "Usar dados reais".','#92400E');
+}
 /* ---- PAINEL DO GESTOR ---- */
 function _soGestor(){return _authUser&&_authUser.isMaster===true;}
 var _mTab='resumo',_mRegs=[],_mFin=[],_mCal=null,_vFil={dist:'',per:'mes',de:'',ate:'',tipo:'',q:''},_fFil={per:'mes'};
@@ -5283,38 +5326,8 @@ if(checkSolicitarMode()){
 
 <script>
 // PWA — Registrar Service Worker
-if('serviceWorker' in navigator){
-  // SW inline via blob para funcionar sem arquivo externo
-  var swCode = `
-self.addEventListener('install', function(e){
-  e.waitUntil(
-    caches.open('choppmaster-v1').then(function(cache){
-      return cache.addAll(['/']);
-    })
-  );
-});
-self.addEventListener('fetch', function(e){
-  e.respondWith(
-    caches.match(e.request).then(function(r){
-      return r || fetch(e.request).then(function(resp){
-        var clone = resp.clone();
-        caches.open('choppmaster-v1').then(function(cache){
-          cache.put(e.request, clone);
-        });
-        return resp;
-      });
-    })
-  );
-});
-`;
-  var blob = new Blob([swCode], {type:'application/javascript'});
-  var swUrl = URL.createObjectURL(blob);
-  navigator.serviceWorker.register(swUrl).then(function(reg){
-    // [prod]
-  }).catch(function(e){
-    console.warn('SW erro:', e.message);
-  });
-}
+try{if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});}).catch(function(){});}
+  if(window.caches&&caches.keys){caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k);});}).catch(function(){});}}catch(e){}
 
 // Botão de instalação PWA
 var _pwaPrompt = null;
