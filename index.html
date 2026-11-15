@@ -4801,9 +4801,77 @@ async function testarConexao(){
   var loc=[];try{loc=demoLocaisReais();}catch(e){}
   if(loc.length)lin('📱 Guardadas só neste aparelho (cadastradas no modo de teste): '+loc.map(function(x){return x.nome+' ('+x.id+')';}).join(', ')+'. Elas são enviadas ao Firebase quando você faz o login delas aqui, ou pelo gestor em "Dados de teste" → "Usar dados reais".','#92400E');
 }
+/* ---- CADASTRO DE NOVA DISTRIBUIDORA POR LINK (página pública + validação do gestor) ---- */
+function linkCadastro(){return linkSistema()+'?cadastro=1';}
+function masterLinkCadastro(){
+  var lk=linkCadastro(),txt='🍺 ChoppMaster — cadastro da sua distribuidora\n\nPreencha seus dados neste link:\n'+lk+'\n\nDepois de conferir, envio seu código, login e senha de acesso.';
+  var c=_el('div','');
+  c.appendChild(_el('p','margin:0 0 8px;font-size:13px;color:#475569;line-height:1.5;','Envie este link para a nova distribuidora. Ela preenche os dados, o cadastro aparece na aba Distribuidoras para você validar, e só então o acesso é criado.'));
+  c.appendChild(_el('pre','background:#F1F5F9;border-radius:8px;padding:12px;font-size:13px;white-space:pre-wrap;word-break:break-all;margin:0;font-family:inherit;',lk));
+  dlg('🔗 Link de cadastro',c,[{txt:'📋 Copiar link',cls:'bs',fn:function(){copiar(lk);}},{txt:'📱 Enviar no WhatsApp',cls:'bk',fn:function(){window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}},{txt:'Fechar',cls:'bp',fn:function(a){a.fechar();}}]);
+}
+function cadPendentesEl(co){
+  var ps=_mCad||[];if(!ps.length)return;
+  var bx=_el('div','background:#EFF6FF;border:1px solid #93C5FD;border-radius:10px;padding:12px;margin-bottom:14px;');
+  bx.appendChild(_el('div','font-size:14px;font-weight:800;color:#1E3A8A;margin-bottom:8px;','📝 Cadastros aguardando validação ('+ps.length+')'));
+  ps.forEach(function(p){
+    var c=_el('div','background:#fff;border:1px solid #BFDBFE;border-radius:8px;padding:10px 12px;margin-bottom:8px;');
+    c.appendChild(_el('strong','font-size:14px;color:var(--dk);',p.nome||'(sem nome)'));
+    var inf=[];if(p.responsavel)inf.push('👤 '+p.responsavel);if(p.telefone)inf.push('📞 '+p.telefone);if(p.email)inf.push('✉️ '+p.email);if(p.cpfCnpj)inf.push('🪪 '+p.cpfCnpj);if(p.cidade)inf.push('📍 '+p.cidade);if(p.endereco)inf.push('🏠 '+p.endereco);
+    inf.push('🕒 Enviado em '+(p.criadoEm?new Date(p.criadoEm).toLocaleString('pt-BR'):'—'));
+    c.appendChild(_el('div','font-size:12px;color:#475569;margin-top:4px;line-height:1.7;',inf.join('  ·  ')));
+    if(p.obs)c.appendChild(_el('div','font-size:12px;color:#475569;margin-top:4px;font-style:italic;','Obs.: '+p.obs));
+    var ac=_el('div','display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;');
+    var b1=_el('button','','✅ Validar e criar acesso');b1.className='btn bp bsm';b1.onclick=function(){masterNovaDist(p);};ac.appendChild(b1);
+    if(p.telefone){var b3=_el('button','','💬 Falar no WhatsApp');b3.className='btn bk bsm';b3.onclick=function(){window.open('https://wa.me/'+_foneWa(p.telefone),'_blank');};ac.appendChild(b3);}
+    var b2=_el('button','','🗑 Recusar');b2.className='btn bd bsm';b2.onclick=function(){if(!confirm('Recusar e apagar o cadastro de "'+(p.nome||'')+'"?'))return;fsDelete('gestao_distribuidoras/'+p.id).then(function(){toast('Cadastro recusado.','ok');renderMaster();}).catch(function(e){toast('Erro: '+e.message,'err');});};ac.appendChild(b2);
+    c.appendChild(ac);bx.appendChild(c);
+  });
+  co.appendChild(bx);
+}
+function checkCadastroMode(){
+  var q=new URLSearchParams((window.location&&window.location.search)||'');if(!q.has('cadastro'))return false;
+  ['mn','sb','bottom-nav','login-screen','ativacao-screen','portal-screen','sol-screen'].forEach(function(i){var e=document.getElementById(i);if(e)e.style.display='none';});
+  var root=_el('div','position:fixed;inset:0;z-index:99999;background:linear-gradient(160deg,#0B1730,#16294F);overflow-y:auto;font-family:Inter,Arial,sans-serif;padding:16px;box-sizing:border-box;');
+  document.body.appendChild(root);
+  var card=_el('div','background:#fff;border-radius:16px;padding:22px 20px;margin:16px auto;max-width:480px;box-shadow:0 10px 40px rgba(0,0,0,.35);');root.appendChild(card);
+  function fim(t,sub,cor){card.innerHTML='';card.appendChild(_el('div','text-align:center;font-size:44px;margin-bottom:8px;',cor?'⚠️':'✅'));card.appendChild(_el('div','text-align:center;font-size:18px;font-weight:800;color:'+(cor||'#065F46')+';margin-bottom:8px;',t));card.appendChild(_el('div','text-align:center;font-size:14px;color:#475569;line-height:1.6;',sub));}
+  var ja='';try{ja=localStorage.getItem('cm_cad_enviado')||'';}catch(e){}
+  card.appendChild(_el('div','text-align:center;font-size:40px;','🍺'));
+  card.appendChild(_el('div','text-align:center;font-size:20px;font-weight:800;color:#0F2044;','ChoppMaster'));
+  card.appendChild(_el('div','text-align:center;font-size:13px;color:#64748B;margin-bottom:14px;','Cadastro de nova distribuidora'));
+  if(ja)card.appendChild(_el('div','background:#FEF3C7;border:1px solid #FCD34D;color:#92400E;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px;line-height:1.5;','Você já enviou um cadastro neste aparelho em '+new Date(ja).toLocaleString('pt-BR')+'. Só envie de novo se precisar corrigir algum dado.'));
+  var nome=campoEl('Nome da distribuidora / empresa *','text','','Ex.: Chopp do João'),doc=campoEl('CNPJ ou CPF *','text','','Somente números'),resp=campoEl('Nome do responsável *','text',''),tel=campoEl('WhatsApp com DDD *','tel','','(62) 99999-0000'),eml=campoEl('E-mail','email','','Para receber os recibos'),cid=campoEl('Cidade / UF *','text','','Ex.: Trindade / GO'),end=campoEl('Endereço','text','','Rua, número, bairro'),obs=campoEl('Observação (opcional)','text','');
+  nome.input.maxLength=80;doc.input.maxLength=20;doc.input.inputMode='numeric';resp.input.maxLength=80;tel.input.maxLength=20;eml.input.maxLength=80;cid.input.maxLength=60;end.input.maxLength=120;obs.input.maxLength=200;
+  [nome,doc,resp,tel,eml,cid,end,obs].forEach(function(x){card.appendChild(x.wrap);});
+  var hp=_el('input','position:absolute;left:-9999px;opacity:0;');hp.tabIndex=-1;hp.autocomplete='off';hp.name='site';card.appendChild(hp);
+  card.appendChild(_el('div','font-size:11px;color:#64748B;line-height:1.5;margin:4px 0 10px;','Seus dados são usados somente para criar e administrar o seu acesso ao sistema. Depois de conferir o cadastro, o gestor envia o código, o login e a senha pelo WhatsApp informado.'));
+  var m=msgEl();card.appendChild(m);
+  var bt=_el('button','width:100%;padding:13px;border:none;border-radius:10px;background:#2563EB;color:#fff;font-weight:800;font-size:15px;cursor:pointer;margin-top:8px;','Enviar cadastro');card.appendChild(bt);
+  var t0=Date.now();
+  bt.onclick=async function(){
+    m.style.display='none';
+    var o={tipo:'cadastro',nome:sanitizeStr(nome.input.value,80),cpfCnpj:String(doc.input.value||'').replace(/[^0-9.\/-]/g,'').slice(0,20),responsavel:sanitizeStr(resp.input.value,80),telefone:sanitizeStr(tel.input.value,20),email:sanitizeStr(eml.input.value,80),cidade:sanitizeStr(cid.input.value,60),endereco:sanitizeStr(end.input.value,120),obs:sanitizeStr(obs.input.value,200),criadoEm:new Date().toISOString()};
+    var dg=o.cpfCnpj.replace(/\D/g,''),fn=o.telefone.replace(/\D/g,'');
+    if(o.nome.length<3)return mostraMsg(m,'Informe o nome da distribuidora.');
+    if(dg.length!==11&&dg.length!==14)return mostraMsg(m,'Informe um CPF (11 números) ou CNPJ (14 números).');
+    if(o.responsavel.length<3)return mostraMsg(m,'Informe o nome do responsável.');
+    if(fn.length<10||fn.length>13)return mostraMsg(m,'Informe o WhatsApp com DDD.');
+    if(o.email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(o.email))return mostraMsg(m,'O e-mail parece incorreto.');
+    if(o.cidade.length<3)return mostraMsg(m,'Informe a cidade e o estado.');
+    if(hp.value||Date.now()-t0<3000){fim('Cadastro enviado!','Aguarde o contato do gestor.');return;}
+    bt.disabled=true;bt.textContent='Enviando...';
+    try{
+      await fsPatch('gestao_distribuidoras/_cad_'+reciboToken(),fsFields(o));
+      try{localStorage.setItem('cm_cad_enviado',o.criadoEm);}catch(e){}
+      fim('Cadastro enviado!','Recebemos os dados de '+o.nome+'. O gestor vai conferir e enviar o código, o login e a senha de acesso pelo WhatsApp '+o.telefone+'.');
+    }catch(e){bt.disabled=false;bt.textContent='Enviar cadastro';mostraMsg(m,'Não foi possível enviar agora. Verifique a internet e tente de novo.');}
+  };
+  return true;
+}
 /* ---- PAINEL DO GESTOR ---- */
 function _soGestor(){return _authUser&&_authUser.isMaster===true;}
-var _mTab='resumo',_mRegs=[],_mFin=[],_mCal=null,_vFil={dist:'',per:'mes',de:'',ate:'',tipo:'',q:''},_fFil={per:'mes'};
+var _mTab='resumo',_mRegs=[],_mCad=[],_mFin=[],_mCal=null,_vFil={dist:'',per:'mes',de:'',ate:'',tipo:'',q:''},_fFil={per:'mes'};
 var _CATS_DESP=['Infraestrutura','Marketing','Suporte','Impostos','Equipamentos','Outros'];
 function _css(){return 'padding:9px;border:1px solid #CBD5E1;border-radius:8px;font-size:14px;width:100%;box-sizing:border-box;background:#fff;';}
 function _sel(opts,val){var s=_el('select',_css());opts.forEach(function(o){var op=document.createElement('option');op.value=o[0];op.textContent=o[1];if(o[0]===val)op.selected=true;s.appendChild(op);});return s;}
@@ -4835,7 +4903,8 @@ function renderMaster(){
   var bx=_el('div','');bx.className='mbtns';var bd=_el('button','','🧪 Dados de teste');bd.className='btn bs';bd.onclick=masterDemo;bx.appendChild(bd);
   var be=_el('button','','🧾 Dados do recibo');be.className='btn bs';be.onclick=abrirEmissor;bx.appendChild(be);
   var bl=_el('button','','🧹 Limpar dados de teste');bl.className='btn bs';bl.onclick=masterLimparTeste;bx.appendChild(bl);
-  var bn=_el('button','','+ Nova distribuidora');bn.className='btn bp';bn.onclick=masterNovaDist;bx.appendChild(bn);top.appendChild(bx);
+  var bk=_el('button','','🔗 Link de cadastro');bk.className='btn bs';bk.onclick=masterLinkCadastro;bx.appendChild(bk);
+  var bn=_el('button','','+ Nova distribuidora');bn.className='btn bp';bn.onclick=function(){masterNovaDist();};bx.appendChild(bn);top.appendChild(bx);
   pg.appendChild(top);
   if(demoOn()){pg.appendChild(_el('div','background:#FEF3C7;border:1px solid #FCD34D;color:#92400E;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px;line-height:1.5;','🧪 MODO DE TESTE — os dados abaixo são fictícios e ficam só neste aparelho. Suas distribuidoras reais NÃO aparecem aqui. Toque em "Dados de teste" → "Usar dados reais" para vê-las.'));}
   var tabs=_el('div','');tabs.className='mtabs';tabs.id='m-tabs';pg.appendChild(tabs);
@@ -4844,7 +4913,8 @@ function renderMaster(){
 }
 function masterCarregar(){
   return fsGet('gestao_distribuidoras?pageSize=200').then(function(res){
-    var regs=((res&&res.documents)||[]).map(regParse).filter(function(r){return r.id.charAt(0)!=='_';});
+    var todos=((res&&res.documents)||[]).map(regParse);_mCad=todos.filter(function(r){return r.id.indexOf('_cad_')===0;}).sort(function(a,b){return String(b.criadoEm||'').localeCompare(String(a.criadoEm||''));});
+    var regs=todos.filter(function(r){return r.id.charAt(0)!=='_';});
     return Promise.all(regs.map(function(r){
       return fsGet(dataPathDist(r.id)).then(function(dd){
         var d={};if(dd&&dd.fields)Object.keys(dd.fields).forEach(function(k){d[k]=fromFirestore(dd.fields[k]);});
@@ -4865,7 +4935,7 @@ function masterCarregar(){
 function masterMostra(){
   var tb=document.getElementById('m-tabs'),co=document.getElementById('m-corpo');if(!tb||!co)return;
   tb.innerHTML='';
-  [['resumo','📊 Resumo'],['dist','🏢 Distribuidoras'],['vendas','📈 Vendas'],['cal','📅 Calendário'],['fin','💰 Financeiro']].forEach(function(a){
+  [['resumo','📊 Resumo'],['dist','🏢 Distribuidoras'+((_mCad||[]).length?' ('+_mCad.length+' novo'+(_mCad.length>1?'s':'')+')':'')],['vendas','📈 Vendas'],['cal','📅 Calendário'],['fin','💰 Financeiro']].forEach(function(a){
     var on=_mTab===a[0],b=_el('button','white-space:nowrap;padding:9px 14px;border-radius:99px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid '+(on?'#0F2044':'#CBD5E1')+';background:'+(on?'#0F2044':'#fff')+';color:'+(on?'#fff':'#334155')+';',a[1]);
     b.onclick=function(){_mTab=a[0];masterMostra();};tb.appendChild(b);if(on)setTimeout(function(){try{tb.scrollLeft=Math.max(0,b.offsetLeft-12);}catch(e){}},0);
   });
@@ -4876,6 +4946,7 @@ function masterMostra(){
 
 /* ---- aba RESUMO ---- */
 function abaResumo(co,regs){
+  if((_mCad||[]).length){var av=_el('div','background:#DBEAFE;border:1px solid #93C5FD;color:#1E3A8A;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px;cursor:pointer;font-weight:700;','📝 '+_mCad.length+' cadastro'+(_mCad.length>1?'s':'')+' de distribuidora aguardando a sua validação — toque para ver.');av.onclick=function(){_mTab='dist';masterMostra();};co.appendChild(av);}
   if(!regs.length){co.appendChild(_el('div','text-align:center;padding:30px;color:var(--silver3);','Nenhuma distribuidora cadastrada. Toque em "+ Nova distribuidora".'));return;}
   var ativas=regs.filter(function(r){return !statusDist(r,r._vendas).bloqueada;}).length;
   var vmes=regs.reduce(function(s2,r){return s2+((r._vendas||{})[mesAt()]||0);},0);
@@ -4886,6 +4957,7 @@ function abaResumo(co,regs){
 
 /* ---- aba DISTRIBUIDORAS ---- */
 function abaDist(co,regs){
+  cadPendentesEl(co);
   var bar=_el('div','display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;');
   var q=_el('input',_css()+'flex:1;min-width:200px;width:auto;');q.placeholder='Buscar por nome, código ou responsável...';
   var st=_sel([['','Todas'],['ok','Ativas'],['bloq','Bloqueadas / em atraso'],['venc','Com pagamento vencido']],'');st.style.cssText=_css()+'width:auto;';
@@ -4909,7 +4981,7 @@ function distDetalhes(r){
   var st=statusDist(r,r._vendas),rs=cobResumo(r,r._vendas),c=_el('div',''),vm=(r._vendas||{})[mesAt()]||0;
   function tit(t){c.appendChild(_el('div','font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 4px;',t));}
   tit('Cadastro');
-  [['Situação',st.rot],['Código de acesso',r.id],['Responsável',r.responsavel||'—'],['Telefone',r.telefone||'—'],['E-mail',r.email||'—'],['Login do administrador',r.adminLogin||'—'],['Cadastrada em',r.criadoEm?new Date(r.criadoEm).toLocaleDateString('pt-BR'):'—'],['Validade',r.expiraEm?new Date(r.expiraEm).toLocaleDateString('pt-BR'):'sem limite'],['Último acesso',r.ultimoAcesso?new Date(r.ultimoAcesso).toLocaleString('pt-BR'):'nunca']].forEach(function(x){c.appendChild(_lin(x[0],x[1]));});
+  [['Situação',st.rot],['Código de acesso',r.id],['Responsável',r.responsavel||'—'],['Telefone',r.telefone||'—'],['E-mail',r.email||'—'],['CNPJ / CPF',r.cpfCnpj||'—'],['Cidade',r.cidade||'—'],['Endereço',r.endereco||'—'],['Login do administrador',r.adminLogin||'—'],['Cadastrada em',r.criadoEm?new Date(r.criadoEm).toLocaleDateString('pt-BR'):'—'],['Validade',r.expiraEm?new Date(r.expiraEm).toLocaleDateString('pt-BR'):'sem limite'],['Último acesso',r.ultimoAcesso?new Date(r.ultimoAcesso).toLocaleString('pt-BR'):'nunca']].forEach(function(x){c.appendChild(_lin(x[0],x[1]));});
   tit('Uso do sistema');
   [['Usuários',r.nUsu],['Clientes',r.nCli],['Produtos',r.nProd],['Máquinas',r.nMaq],['Pedidos',r.nPed]].forEach(function(x){c.appendChild(_lin(x[0],String(x[1]==null?0:x[1])));});
   tit('Vendas');
@@ -5202,13 +5274,15 @@ function masterLimparTeste(){
     }catch(e){toast('Erro: '+e.message,'err');}
   }}]);
 }
-function masterNovaDist(){
+function masterNovaDist(pre){
   if(!_soGestor())return;
+  pre=(pre&&pre.id)?pre:null;
   var c=_el('div','');
+  if(pre)c.appendChild(_el('div','background:#DBEAFE;border:1px solid #93C5FD;color:#1E3A8A;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px;line-height:1.5;','📝 Dados preenchidos pelo cadastro de '+(pre.responsavel||pre.nome)+'. Confira, defina a cobrança e toque em Criar.'));
   if(demoOn())c.appendChild(_el('div','background:#FEF3C7;border:1px solid #FCD34D;color:#92400E;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px;line-height:1.5;','🧪 Você está no MODO DE TESTE. Esta distribuidora fica guardada só neste aparelho e o login dela ainda NÃO funciona. Para valer de verdade, depois toque em "Dados de teste" → "Usar dados reais": ela é enviada ao Firebase.'));
-  var nome=campoEl('Nome da distribuidora *','text','');
-  var resp=campoEl('Responsável','text','');
-  var tel=campoEl('Telefone / WhatsApp','text','','(62) 99999-0000');
+  var nome=campoEl('Nome da distribuidora *','text',pre?pre.nome:'');
+  var resp=campoEl('Responsável','text',pre?pre.responsavel:'');
+  var tel=campoEl('Telefone / WhatsApp','text',pre?pre.telefone:'','(62) 99999-0000');
   var cod=campoEl('Código de acesso *','text','DIST-'+String(Math.floor(1000+Math.random()*9000)));
   var val=_el('select','width:100%;padding:10px;border:1px solid #CBD5E1;border-radius:8px;font-size:14px;margin-bottom:10px;');
   [['30','Validade de 30 dias'],['90','Validade de 90 dias'],['365','Validade de 1 ano'],['0','Sem limite']].forEach(function(o){var op=document.createElement('option');op.value=o[0];op.textContent=o[1];val.appendChild(op);});
@@ -5216,7 +5290,7 @@ function masterNovaDist(){
   var sn=campoEl('Senha provisória *','text',gerarSenha());
   [nome,resp,tel,cod].forEach(function(x){c.appendChild(x.wrap);});c.appendChild(val);c.appendChild(lg.wrap);c.appendChild(sn.wrap);
   c.appendChild(_el('div','font-size:11px;color:#64748B;','A pessoa será obrigada a criar uma senha nova no primeiro acesso.'));
-  var eml=campoEl('E-mail (para enviar recibos)','email','');c.appendChild(eml.wrap);
+  var eml=campoEl('E-mail (para enviar recibos)','email',pre?pre.email:'');c.appendChild(eml.wrap);
   c.appendChild(_el('div','font-size:12px;font-weight:700;color:#0F2044;margin:12px 0 8px;','💵 Quanto ela paga pelo uso do sistema'));
   var form=cobForm({});c.appendChild(form.el);
   var m=msgEl();c.appendChild(m);
@@ -5232,24 +5306,26 @@ function masterNovaDist(){
       var dias=parseInt(val.value,10);
       var reg={nome:n,responsavel:sanitizeStr(resp.input.value,80),telefone:sanitizeStr(tel.input.value,30),ativo:true,
         criadoEm:new Date().toISOString(),expiraEm:dias>0?new Date(Date.now()+dias*86400000).toISOString():'',ultimoAcesso:'',adminLogin:lgn,pagos:[],email:sanitizeStr(eml.input.value,80)};
+      if(pre){reg.cpfCnpj=pre.cpfCnpj||'';reg.cidade=pre.cidade||'';reg.endereco=pre.endereco||'';}
       Object.keys(cob).forEach(function(k){reg[k]=cob[k];});
       var mods=['dashboard','calendario','pedidos','financeiro','produtos','maquinas','clientes','config'];
       var adm={id:uid(),nome:reg.responsavel||'Administrador',login:lgn,senhaHash:await hashSenhaNova(s),admin:true,modulos:mods,ativo:true,mustChange:true};
       var base={pedidos:[],produtos:[],maquinas:[],clientes:[],lancamentos:[],movimentos:[],alertas:[],solicitacoes:[],usuarios:[adm],licenca:{codigos:[]},
-        config:{empresa:n,responsavel:reg.responsavel,cpfCnpj:'',tel:reg.telefone,cnpj:'',email:'',end:'',pix:'',termoVenda:'',termoLocacao:''},distribuidoras:{}};
+        config:{empresa:n,responsavel:reg.responsavel,cpfCnpj:(pre&&pre.cpfCnpj)||'',tel:reg.telefone,cnpj:'',email:reg.email||'',end:pre?[pre.endereco,pre.cidade].filter(Boolean).join(' - '):'',pix:'',termoVenda:'',termoLocacao:''},distribuidoras:{}};
       await fsPatch(dataPathDist(cd),fsFields(base));
       await fsPatch('gestao_distribuidoras/'+cd,fsFields(reg));
-      a.fechar();masterResultado('✅ Distribuidora criada',n,cd,lgn,s);renderMaster();
+      if(pre){try{await fsDelete('gestao_distribuidoras/'+pre.id);}catch(e){}}
+      a.fechar();masterResultado('✅ Distribuidora criada',n,cd,lgn,s,reg.telefone);renderMaster();
     }catch(e){mostraMsg(m,'Erro ao criar ('+e.message+'). Verifique a internet e as regras do Firebase.');}
   }}]);
 }
-function masterResultado(titulo,nome,cod,lgn,senha){
+function masterResultado(titulo,nome,cod,lgn,senha,tel){
   var txt='🍺 ChoppMaster — acesso da distribuidora '+nome+'\n\nEndereço: '+linkSistema()+'\nCódigo da distribuidora: '+cod+'\nLogin: '+lgn+'\nSenha provisória: '+senha+'\n\nNo primeiro acesso o sistema vai pedir para você criar a sua senha.';
   var c=_el('div','');
   c.appendChild(_el('pre','background:#F1F5F9;border-radius:8px;padding:12px;font-size:13px;white-space:pre-wrap;word-break:break-word;margin:0;font-family:inherit;',txt));
   c.appendChild(_el('div','font-size:11px;color:#991B1B;margin-top:8px;','Guarde estes dados agora: a senha provisória não aparece de novo.'));
   dlg(titulo,c,[{txt:'📋 Copiar',cls:'bs',fn:function(){copiar(txt);}},
-    {txt:'📱 WhatsApp',cls:'bk',fn:function(){window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}},
+    {txt:'📱 Enviar no WhatsApp',cls:'bk',fn:function(){var f=_foneWa(tel);window.open('https://wa.me/'+(f.length>=12?f:'')+'?text='+encodeURIComponent(txt),'_blank');}},
     {txt:'Fechar',cls:'bp',fn:function(a){a.fechar();}}]);
 }
 function masterResetSenha(r){
@@ -5312,6 +5388,8 @@ if(checkSolicitarMode()){
   // modo solicitação
 } else if(checkPortalMode()){
   // modo portal
+} else if(checkCadastroMode()){
+  /* página pública de cadastro de nova distribuidora */
 } else if(checkReciboMode()){
   // modo recibo
 } else if(checkAprovarMode()){
