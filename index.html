@@ -5067,13 +5067,26 @@ function masterRenovar(r){
   }}]);
 }
 function masterEditar(r){
-  var c=_el('div',''),nm=campoEl('Nome da distribuidora *','text',r.nome||''),rs=campoEl('Responsável','text',r.responsavel||''),tl=campoEl('Telefone / WhatsApp','text',r.telefone||''),em=campoEl('E-mail','email',r.email||'');
+  var c=_el('div','');
+  function tit(t){c.appendChild(_el('div','font-size:12px;font-weight:800;color:#0F2044;margin:14px 0 8px;padding-bottom:4px;border-bottom:1px solid #E2E8F0;',t));}
+  tit('📋 Dados da distribuidora');
+  var nm=campoEl('Nome da distribuidora *','text',r.nome||''),rs=campoEl('Responsável','text',r.responsavel||''),tl=campoEl('Telefone / WhatsApp','text',r.telefone||''),em=campoEl('E-mail','email',r.email||'');
   [nm,rs,tl,em].forEach(function(x){c.appendChild(x.wrap);});
-  c.appendChild(_el('p','margin:4px 0 8px;font-size:12px;color:#64748B;','Código de acesso: '+r.id+' (não muda). Para validade, cobrança e senha use os outros botões do cartão.'));
+  tit('🔓 Acesso');
+  var vl=campoEl('Validade do acesso (vazio = sem limite)','date',r.expiraEm?String(r.expiraEm).slice(0,10):'');c.appendChild(vl.wrap);
+  c.appendChild(_el('label','display:block;font-size:11px;font-weight:700;color:#475569;margin-bottom:3px;text-transform:uppercase;','Situação'));
+  var sa=_el('select','width:100%;padding:10px;border:1px solid #CBD5E1;border-radius:8px;font-size:14px;margin-bottom:10px;');
+  [['1','Ativa'],['0','Bloqueada']].forEach(function(o){var op=document.createElement('option');op.value=o[0];op.textContent=o[1];if((r.ativo===false?'0':'1')===o[0])op.selected=true;sa.appendChild(op);});c.appendChild(sa);
+  tit('💵 Forma de pagamento (cobrança)');
+  var cf=cobForm(r);c.appendChild(cf.el);
+  c.appendChild(_el('p','margin:12px 0 4px;font-size:12px;color:#64748B;line-height:1.5;','Código de acesso: '+r.id+' (não muda). Pagamentos já registrados continuam guardados. Para gerar nova senha use o botão "🔑 Resetar senha".'));
   var m=msgEl();c.appendChild(m);
-  dlg('✏️ Editar '+(r.nome||r.id),c,[{txt:'Cancelar',cls:'bs',fn:function(a){a.fechar();}},{txt:'Salvar',cls:'bp',fn:function(a){
+  dlg('✏️ Editar '+(r.nome||r.id),c,[{txt:'Cancelar',cls:'bs',fn:function(a){a.fechar();}},{txt:'Salvar tudo',cls:'bp',fn:function(a){
     var n=sanitizeStr(nm.input.value,80);if(!n)return mostraMsg(m,'Informe o nome da distribuidora.');
-    var o={nome:n,responsavel:sanitizeStr(rs.input.value,80),telefone:sanitizeStr(tl.input.value,30),email:sanitizeStr(em.input.value,100)};
+    var cb=cf.ler();if(cb.erro)return mostraMsg(m,cb.erro);
+    var o={nome:n,responsavel:sanitizeStr(rs.input.value,80),telefone:sanitizeStr(tl.input.value,30),email:sanitizeStr(em.input.value,100),
+      expiraEm:vl.input.value?new Date(vl.input.value+'T23:59:59').toISOString():'',ativo:sa.value==='1'};
+    Object.keys(cb).forEach(function(k){o[k]=cb[k];});
     fsPatch('gestao_distribuidoras/'+r.id,fsFields(o),Object.keys(o)).then(function(){a.fechar();toast('Dados atualizados.','ok');renderMaster();}).catch(function(e){mostraMsg(m,'Erro: '+e.message);});
   }}]);
 }
