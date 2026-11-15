@@ -4702,6 +4702,33 @@ function demoPreparar(){
   return masterDemoCriar().then(function(){try{localStorage.setItem('cm_demo_seeded','2');}catch(e){}});
 }
 
+function demoLocaisReais(){
+  var st=demoStore();return Object.keys(st).filter(function(k){var m=k.match(/^gestao_distribuidoras\/([^\/]+)$/);return m&&m[1].charAt(0)!=='_'&&st[k]&&st[k].demo!==true;}).map(function(k){return {id:k.split('/')[1],nome:st[k].nome||k.split('/')[1]};});
+}
+async function demoIrParaReais(){
+  var loc=demoLocaisReais(),st=demoStore();
+  try{localStorage.setItem('cm_demo_off','1');}catch(e){}
+  if(!loc.length){renderMaster();return;}
+  var ok=[],ja=[],err='';
+  for(var i=0;i<loc.length;i++){
+    var id=loc[i].id;
+    try{
+      var ex=null;try{ex=await fsGet('gestao_distribuidoras/'+id);}catch(e){throw e;}
+      if(ex&&ex.fields){ja.push(loc[i].nome);continue;}
+      var dados=st[dataPathDist(id)];
+      if(dados)await fsPatch(dataPathDist(id),fsFields(dados));
+      await fsPatch('gestao_distribuidoras/'+id,fsFields(st['gestao_distribuidoras/'+id]));
+      delete st['gestao_distribuidoras/'+id];delete st[dataPathDist(id)];ok.push(loc[i].nome+' ('+id+')');
+    }catch(e){err=e.message||String(e);break;}
+  }
+  demoSave(st);
+  var c=_el('div','');
+  if(ok.length)c.appendChild(_el('p','font-size:14px;color:#065F46;line-height:1.6;margin:0 0 8px;','✅ Enviada(s) para o Firebase: '+ok.join(', ')+'. Agora o login dela(s) funciona em qualquer aparelho, com o mesmo código, login e senha.'));
+  if(ja.length)c.appendChild(_el('p','font-size:13px;color:#92400E;line-height:1.6;margin:0 0 8px;','Já existia no Firebase com o mesmo código (não mexi): '+ja.join(', ')+'.'));
+  if(err)c.appendChild(_el('p','font-size:14px;color:#991B1B;line-height:1.6;margin:0;','❌ O Firebase recusou a gravação ('+err+'). Falta publicar as regras do Firebase. As distribuidoras continuam guardadas neste aparelho; depois de publicar as regras, volte ao modo de teste e toque em "Usar dados reais" de novo.'));
+  dlg('Dados reais',c,[{txt:'OK',cls:'bp',fn:function(a){a.fechar();}}]);
+  renderMaster();
+}
 function masterDemo(){
   if(!_soGestor())return;
   var on=demoOn(),c=_el('div','');
@@ -4710,7 +4737,7 @@ function masterDemo(){
   var bots=[{txt:'Fechar',cls:'bs',fn:function(a){a.fechar();}}];
   if(on){
     bots.push({txt:'🔄 Recarregar dados de teste',cls:'bs',fn:function(a){try{localStorage.removeItem(_DEMO_KEY);localStorage.removeItem('cm_demo_seeded');}catch(e){}a.fechar();renderMaster();}});
-    bots.push({txt:'Usar dados reais',cls:'bp',fn:function(a){try{localStorage.setItem('cm_demo_off','1');}catch(e){}a.fechar();renderMaster();}});
+    bots.push({txt:'Usar dados reais',cls:'bp',fn:function(a){a.fechar();demoIrParaReais();}});
   }else{
     bots.push({txt:'Ativar modo de teste',cls:'bp',fn:function(a){try{localStorage.removeItem('cm_demo_off');}catch(e){}a.fechar();renderMaster();}});
   }
@@ -5134,6 +5161,7 @@ function masterLimparTeste(){
 function masterNovaDist(){
   if(!_soGestor())return;
   var c=_el('div','');
+  if(demoOn())c.appendChild(_el('div','background:#FEF3C7;border:1px solid #FCD34D;color:#92400E;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px;line-height:1.5;','🧪 Você está no MODO DE TESTE. Esta distribuidora fica guardada só neste aparelho e o login dela ainda NÃO funciona. Para valer de verdade, depois toque em "Dados de teste" → "Usar dados reais": ela é enviada ao Firebase.'));
   var nome=campoEl('Nome da distribuidora *','text','');
   var resp=campoEl('Responsável','text','');
   var tel=campoEl('Telefone / WhatsApp','text','','(62) 99999-0000');
