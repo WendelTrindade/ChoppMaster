@@ -4749,6 +4749,7 @@ function renderMaster(){
   tt.appendChild(_el('div','font-size:18px;font-weight:700;color:var(--dk);','Minhas distribuidoras'));top.appendChild(tt);
   var bx=_el('div','');bx.className='mbtns';var bd=_el('button','','🧪 Dados de teste');bd.className='btn bs';bd.onclick=masterDemo;bx.appendChild(bd);
   var be=_el('button','','🧾 Dados do recibo');be.className='btn bs';be.onclick=abrirEmissor;bx.appendChild(be);
+  var bl=_el('button','','🧹 Limpar dados de teste');bl.className='btn bs';bl.onclick=masterLimparTeste;bx.appendChild(bl);
   var bn=_el('button','','+ Nova distribuidora');bn.className='btn bp';bn.onclick=masterNovaDist;bx.appendChild(bn);top.appendChild(bx);
   pg.appendChild(top);
   if(demoOn()){pg.appendChild(_el('div','background:#FEF3C7;border:1px solid #FCD34D;color:#92400E;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px;line-height:1.5;','🧪 MODO DE TESTE — os dados abaixo são fictícios e ficam só neste aparelho. Nada foi enviado ao Firebase. Toque em "Dados de teste" para voltar aos dados reais.'));}
@@ -5046,6 +5047,8 @@ function cardDist(r){
   bt('💵 Cobrança','bk',function(){abrirCobranca(r);});
   bt('📅 Renovar','bs',function(){masterRenovar(r);});
   bt('🔑 Resetar senha','bs',function(){masterResetSenha(r);});
+  bt('✏️ Editar','bs',function(){masterEditar(r);});
+  bt('🗑 Excluir','bd',function(){masterExcluir(r);});
   c.appendChild(ac);return c;
 }
 function masterBloquear(r){
@@ -5061,6 +5064,44 @@ function masterRenovar(r){
     var d=parseInt(sel.value,10),novo='';
     if(d>0){var base=Math.max(Date.now(),r.expiraEm?new Date(r.expiraEm).getTime():0);novo=new Date(base+d*86400000).toISOString();}
     fsPatch('gestao_distribuidoras/'+r.id,{expiraEm:{stringValue:novo},ativo:{booleanValue:true}},['expiraEm','ativo']).then(function(){a.fechar();toast('Validade atualizada.','ok');renderMaster();}).catch(function(e){toast('Erro: '+e.message,'err');});
+  }}]);
+}
+function masterEditar(r){
+  var c=_el('div',''),nm=campoEl('Nome da distribuidora *','text',r.nome||''),rs=campoEl('Responsável','text',r.responsavel||''),tl=campoEl('Telefone / WhatsApp','text',r.telefone||''),em=campoEl('E-mail','email',r.email||'');
+  [nm,rs,tl,em].forEach(function(x){c.appendChild(x.wrap);});
+  c.appendChild(_el('p','margin:4px 0 8px;font-size:12px;color:#64748B;','Código de acesso: '+r.id+' (não muda). Para validade, cobrança e senha use os outros botões do cartão.'));
+  var m=msgEl();c.appendChild(m);
+  dlg('✏️ Editar '+(r.nome||r.id),c,[{txt:'Cancelar',cls:'bs',fn:function(a){a.fechar();}},{txt:'Salvar',cls:'bp',fn:function(a){
+    var n=sanitizeStr(nm.input.value,80);if(!n)return mostraMsg(m,'Informe o nome da distribuidora.');
+    var o={nome:n,responsavel:sanitizeStr(rs.input.value,80),telefone:sanitizeStr(tl.input.value,30),email:sanitizeStr(em.input.value,100)};
+    fsPatch('gestao_distribuidoras/'+r.id,fsFields(o),Object.keys(o)).then(function(){a.fechar();toast('Dados atualizados.','ok');renderMaster();}).catch(function(e){mostraMsg(m,'Erro: '+e.message);});
+  }}]);
+}
+function masterExcluir(r){
+  var c=_el('div',''),mt=msgEl();
+  c.appendChild(_el('p','margin:0 0 8px;font-size:14px;color:#991B1B;font-weight:700;','⚠️ Isto apaga a distribuidora e TODOS os dados dela (pedidos, clientes, produtos, usuários, recibos). Não dá para desfazer.'));
+  var cf=campoEl('Para confirmar, digite o código: '+r.id,'text','');
+  if(r.demo!==true)c.appendChild(cf.wrap);else c.appendChild(_el('p','margin:0;font-size:13px;color:#475569;','É uma distribuidora de teste.'));
+  c.appendChild(mt);
+  dlg('🗑 Excluir '+(r.nome||r.id),c,[{txt:'Cancelar',cls:'bs',fn:function(a){a.fechar();}},{txt:'Excluir de vez',cls:'bd',fn:async function(a){
+    if(r.demo!==true&&cf.input.value.trim().toUpperCase()!==String(r.id).toUpperCase())return mostraMsg(mt,'O código digitado não confere.');
+    try{
+      for(var j=0;j<(r.pagos||[]).length;j++){if(r.pagos[j].tok){try{await fsDelete('recibos/'+r.pagos[j].tok);}catch(e){}}}
+      try{await fsDelete(dataPathDist(r.id));}catch(e){}
+      await fsDelete('gestao_distribuidoras/'+r.id);
+      a.fechar();toast('Distribuidora excluída.','ok');renderMaster();
+    }catch(e){mostraMsg(mt,'Erro: '+e.message);}
+  }}]);
+}
+function masterLimparTeste(){
+  var emTeste=demoOn();
+  var c=_el('div','');c.appendChild(_el('p','margin:0;font-size:14px;color:#334155;line-height:1.5;',emTeste?'Vai apagar todos os dados fictícios deste aparelho (distribuidoras de teste, vendas, recibos e lançamentos do financeiro). Seus dados reais no Firebase não são mexidos.':'Vai apagar do Firebase só as distribuidoras de teste (código começando com DEMO-) e os recibos delas. As distribuidoras reais não são mexidas.'));
+  dlg('🧹 Limpar dados de teste',c,[{txt:'Cancelar',cls:'bs',fn:function(a){a.fechar();}},{txt:'Limpar agora',cls:'bd',fn:async function(a){
+    try{
+      if(emTeste){try{localStorage.removeItem(_DEMO_KEY);localStorage.setItem('cm_demo_seeded','2');}catch(e){}_mRegs=[];_mFin=[];a.fechar();toast('Dados de teste apagados.','ok');}
+      else{var n=await masterDemoRemover();a.fechar();toast(n+' distribuidora(s) de teste apagada(s).','ok');}
+      renderMaster();
+    }catch(e){toast('Erro: '+e.message,'err');}
   }}]);
 }
 function masterNovaDist(){
