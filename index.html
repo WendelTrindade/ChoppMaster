@@ -4034,7 +4034,7 @@ function checkAprovarMode(){
 /* ===== MULTI-DISTRIBUIDORAS: login por código, painel do gestor, recuperação de senha ===== */
 var _FB_PID_PADRAO='choppmaster-wendel-1ddf8';
 var _FB_KEY_PADRAO='AIzaSyA6nJPbOx-TDJqThAyamqeZ1N0T_diisFY';
-var _MASTER_SENHA_HASH='pbkdf2$120000$00fe8ad519f5856d0075d65b2f2783d8$ae68284860909badac5d24ac18d84ecab601751fa780e4bd8e97f508b8d0e009';
+var _MASTER_SENHA_HASH='pbkdf2$120000$1a90df124480bfaec33de46a90c4ff76$e48c39d939c2743f5e0b03a8420e18b98bd734508c67928906c120deee6100ac';
 var _GESTOR_TEL='';   /* WhatsApp do gestor com DDD (ex: 62999990000) — usado em "Esqueci minha senha" */
 var _viewAs=null;
 
@@ -4673,7 +4673,7 @@ async function masterDemoRemover(){
 }
 /* ---- MODO DE TESTE LOCAL: dados fictícios guardados só neste aparelho (nada vai ao Firebase) ---- */
 var _DEMO_KEY='cm_demo_fs';
-function demoOn(){try{return !!(_authUser&&_authUser.isMaster===true&&localStorage.getItem('cm_demo_off')!=='1');}catch(e){return false;}}
+function demoOn(){try{return !!(_authUser&&_authUser.isMaster===true&&localStorage.getItem('cm_demo_on')==='1');}catch(e){return false;}}
 function demoStore(){try{return JSON.parse(localStorage.getItem(_DEMO_KEY)||'{}');}catch(e){return {};}}
 function demoSave(st){try{localStorage.setItem(_DEMO_KEY,JSON.stringify(st));return true;}catch(e){try{toast('Sem espaço para os dados de teste neste aparelho.','err');}catch(x){}return false;}}
 function demoCaminho(url){
@@ -4722,7 +4722,7 @@ function demoLocaisReais(){
 }
 async function demoIrParaReais(){
   var loc=demoLocaisReais(),st=demoStore();
-  try{localStorage.setItem('cm_demo_off','1');}catch(e){}
+  try{localStorage.removeItem('cm_demo_on');}catch(e){}
   if(!loc.length){renderMaster();return;}
   var ok=[],ja=[],err='';
   for(var i=0;i<loc.length;i++){
@@ -4754,7 +4754,7 @@ function masterDemo(){
     bots.push({txt:'🔄 Recarregar dados de teste',cls:'bs',fn:function(a){try{localStorage.removeItem(_DEMO_KEY);localStorage.removeItem('cm_demo_seeded');}catch(e){}a.fechar();renderMaster();}});
     bots.push({txt:'Usar dados reais',cls:'bp',fn:function(a){a.fechar();demoIrParaReais();}});
   }else{
-    bots.push({txt:'Ativar modo de teste',cls:'bp',fn:function(a){try{localStorage.removeItem('cm_demo_off');}catch(e){}a.fechar();renderMaster();}});
+    bots.push({txt:'Ativar modo de teste',cls:'bp',fn:function(a){try{localStorage.setItem('cm_demo_on','1');}catch(e){}a.fechar();renderMaster();}});
   }
   dlg('🧪 Modo de teste',c,bots);
 }
@@ -4827,6 +4827,7 @@ function kpiCards(lista){
 
 function renderMaster(){
   var pg=document.getElementById('pg-master');if(!pg||!_soGestor())return;
+  if(!demoOn()&&!window._demoEnvTent){var _lc=[];try{_lc=demoLocaisReais();}catch(e){}if(_lc.length){window._demoEnvTent=true;demoIrParaReais();return;}}
   pg.innerHTML='';
   var top=_el('div','');top.className='mtop';
   var tt=_el('div','');tt.appendChild(_el('div','font-size:11px;color:var(--silver3);text-transform:uppercase;letter-spacing:.5px;','Painel do Gestor'));
@@ -4836,7 +4837,7 @@ function renderMaster(){
   var bl=_el('button','','🧹 Limpar dados de teste');bl.className='btn bs';bl.onclick=masterLimparTeste;bx.appendChild(bl);
   var bn=_el('button','','+ Nova distribuidora');bn.className='btn bp';bn.onclick=masterNovaDist;bx.appendChild(bn);top.appendChild(bx);
   pg.appendChild(top);
-  if(demoOn()){pg.appendChild(_el('div','background:#FEF3C7;border:1px solid #FCD34D;color:#92400E;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px;line-height:1.5;','🧪 MODO DE TESTE — os dados abaixo são fictícios e ficam só neste aparelho. Nada foi enviado ao Firebase. Toque em "Dados de teste" para voltar aos dados reais.'));}
+  if(demoOn()){pg.appendChild(_el('div','background:#FEF3C7;border:1px solid #FCD34D;color:#92400E;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px;line-height:1.5;','🧪 MODO DE TESTE — os dados abaixo são fictícios e ficam só neste aparelho. Suas distribuidoras reais NÃO aparecem aqui. Toque em "Dados de teste" → "Usar dados reais" para vê-las.'));}
   var tabs=_el('div','');tabs.className='mtabs';tabs.id='m-tabs';pg.appendChild(tabs);
   var corpo=_el('div','');corpo.id='m-corpo';corpo.appendChild(_el('div','text-align:center;padding:24px;color:var(--silver3);','Carregando...'));pg.appendChild(corpo);
   demoPreparar().then(masterCarregar).then(function(){masterMostra();}).catch(function(e){corpo.innerHTML='';corpo.appendChild(_el('div','text-align:center;padding:24px;color:#991B1B;','Não foi possível carregar ('+e.message+'). Verifique a internet e as regras do Firebase.'));});
