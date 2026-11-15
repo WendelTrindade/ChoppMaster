@@ -4030,15 +4030,15 @@ function checkAprovarMode(){
 
 
 /* ===== MULTI-DISTRIBUIDORAS: login por código, painel do gestor, recuperação de senha ===== */
-var _FB_PID_PADRAO='choppmaster-wendel';
-var _FB_KEY_PADRAO='AIzaSyAuNWlmQvrswEqTDc5GAs0ScnQ3BhZBai8';
+var _FB_PID_PADRAO='choppmaster-wendel-1ddf8';
+var _FB_KEY_PADRAO='AIzaSyA6nJPbOx-TDJqThAyamqeZ1N0T_diisFY';
 var _MASTER_SENHA_HASH='pbkdf2$120000$00fe8ad519f5856d0075d65b2f2783d8$ae68284860909badac5d24ac18d84ecab601751fa780e4bd8e97f508b8d0e009';
 var _GESTOR_TEL='';   /* WhatsApp do gestor com DDD (ex: 62999990000) — usado em "Esqueci minha senha" */
 var _viewAs=null;
 
 function fbCred(){
   var c=DB.config||{}, pid=(c.fbPid||'').trim(), key=(c.fbKey||'').trim();
-  if(!pid||!key){pid=_FB_PID_PADRAO;key=_FB_KEY_PADRAO;}
+  if(!pid||!key||pid==='choppmaster-wendel'){pid=_FB_PID_PADRAO;key=_FB_KEY_PADRAO;}
   return {pid:pid,key:key};
 }
 function fsBase(){return 'https://firestore.googleapis.com/v1/projects/'+encodeURIComponent(fbCred().pid)+'/databases/(default)/documents/';}
@@ -5243,6 +5243,7 @@ function voltarParaMaster(){
 
 function fbUrl(){
   var cfg=DB.config||{}, pid=(cfg.fbPid||'').trim(), key=(cfg.fbKey||'').trim();
+  if(pid==='choppmaster-wendel'){pid='';key='';}
   if(!pid||!key){ if(!_distId) return null; pid=_FB_PID_PADRAO; key=_FB_KEY_PADRAO; }
   var docId=_distId?'dist_'+_distId:'dados_master';
   _fbUid=docId;_fbPid=pid;_fbKey=key;
