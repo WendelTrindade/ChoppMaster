@@ -957,7 +957,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão com o Firebase</a></div>
-    <div class="login-version">ChoppMaster ERP v3.3 · 18/11</div>
+    <div class="login-version">ChoppMaster ERP v3.4 · 18/11</div>
   </div>
 </div>
 
@@ -2063,7 +2063,8 @@ function renderConfig(){
   h+='<div style="text-align:right;margin-bottom:40px;">';
   h+='<button class="btn bp" style="padding:12px 28px;font-size:14px;" onclick="salvaConfig()">&#128190; Salvar Configura&ccedil;&otilde;es</button></div>';
   pg.innerHTML=h;
-  setTimeout(function(){maskPhone(document.getElementById("cfg-tel"));maskCPFCNPJ(document.getElementById("cfg-cpfcnpj"));renderUsuarios();},30);
+  setTimeout(function(){['cfg-tv','cfg-tl'].forEach(function(id){var e=document.getElementById(id);if(!e)return;var tm=null;e.addEventListener('input',function(){clearTimeout(tm);tm=setTimeout(function(){if(!DB.config)DB.config={};DB.config[id==='cfg-tv'?'termoVenda':'termoLocacao']=(e.value||'').trim();saveDB();toast('Termo salvo.','ok');},1500);});});
+    maskPhone(document.getElementById("cfg-tel"));maskCPFCNPJ(document.getElementById("cfg-cpfcnpj"));renderUsuarios();},30);
 }
 
 function salvaConfig(){
@@ -2958,7 +2959,7 @@ function saveDB(){
   localStorage.setItem(key, dados);
   var e=document.getElementById('lsave');
   if(e)e.textContent='Salvo '+new Date().toLocaleTimeString('pt-BR');
-  if(_fbUid&&!_fbSyncing)setTimeout(fbSave,1200);
+  if(_fbUid){_fbDirty++;clearTimeout(_fbSaveT);_fbSaveT=setTimeout(fbSave,1200);}
 }
 
 /* Carregar DB isolado por distribuidora */
@@ -3373,7 +3374,7 @@ function toggleDist(distId,ativo){
   }catch(e){}
 })();
 /* ===== FIREBASE REST API (sem SDK) ===== */
-var _fbUid=null, _fbSyncing=false, _fbPollTimer=null, _fbLastSaved=true;
+var _fbUid=null, _fbSyncing=false, _fbPollTimer=null, _fbLastSaved=true, _fbDirty=0, _fbSaveT=null, _fbErrAvisado=0;
 var _fbPid='', _fbKey='';
 
 /* URL do documento desta distribuidora no Firestore */
@@ -3408,7 +3409,7 @@ function sanitizeStr(s, maxLen){
 function toFirestore(obj){
   if(obj===null||obj===undefined)return {nullValue:null};
   if(typeof obj==='boolean')return {booleanValue:obj};
-  if(typeof obj==='number')return {doubleValue:obj};
+  if(typeof obj==='number')return isFinite(obj)?{doubleValue:obj}:{nullValue:null};
   if(typeof obj==='string')return {stringValue:obj};
   if(Array.isArray(obj))return {arrayValue:{values:obj.map(toFirestore)}};
   if(typeof obj==='object'){
@@ -3441,21 +3442,26 @@ function fromFirestore(val){
 
 /* Salvar DB no Firestore */
 function fbSave(){
-  var url=fbUrl();if(!url||_fbSyncing)return;
+  var url=fbUrl();if(!url)return;
+  if(_fbSyncing){clearTimeout(_fbSaveT);_fbSaveT=setTimeout(fbSave,1500);return;}
   _fbSyncing=true;fbStatus('Sincronizando...','#854d0e');
-  var fields={};
+  var marca=_fbDirty,fields={};
   Object.keys(DB).forEach(function(k){fields[k]=toFirestore(DB[k]);});
-  fetch(url,{
-    method:'PATCH',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({fields:fields})
-  })
+  var corpo=JSON.stringify({fields:fields});
+  fetch(url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:corpo})
   .then(function(r){
     _fbSyncing=false;
-    if(r.ok){fbStatus('✓ Nuvem sincronizada','#166534');}
-    else{r.text().then(function(t){fbStatus('Erro: '+r.status,'#dc2626');console.warn('fbSave erro:',t);});}
+    if(r.ok){
+      if(_fbDirty===marca)_fbDirty=0;else{clearTimeout(_fbSaveT);_fbSaveT=setTimeout(fbSave,800);}
+      fbStatus('✓ Nuvem sincronizada','#166534');_fbErrAvisado=0;
+    } else {
+      r.text().then(function(t){fbStatus('Erro: '+r.status,'#dc2626');console.warn('fbSave erro:',t);
+        var grande=corpo.length>1000000||/too large|exceeds|maximum/i.test(t);
+        if(Date.now()-_fbErrAvisado>60000){_fbErrAvisado=Date.now();toast(grande?'⚠️ Não salvou na nuvem: os dados passaram do limite de tamanho. Fale com o gestor.':'⚠️ Não salvou na nuvem (erro '+r.status+'). Suas alterações estão guardadas neste aparelho e serão enviadas de novo.','err');}
+        clearTimeout(_fbSaveT);_fbSaveT=setTimeout(fbSave,20000);});
+    }
   })
-  .catch(function(e){_fbSyncing=false;fbStatus('Sem conexão','#6b7280');});
+  .catch(function(e){_fbSyncing=false;fbStatus('Sem conexão','#6b7280');clearTimeout(_fbSaveT);_fbSaveT=setTimeout(fbSave,15000);});
 }
 
 /* Carregar DB do Firestore */
@@ -3500,6 +3506,7 @@ function fbStartPoll(){
     .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();})
     .then(function(doc){
       if(!doc||!doc.fields)return;
+      if(_fbDirty||_fbSyncing)return; /* há alteração local ainda não enviada: não sobrescrever */
       var fields=doc.fields;
       // Re-renderiza página atual
       var pages=['dashboard','pedidos','financeiro','produtos','maquinas','clientes'];
