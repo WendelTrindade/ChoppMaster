@@ -431,11 +431,12 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 /* Header user info */
 #user-info{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver3);}
 #user-info strong{color:var(--dk);font-size:13px;}
+@media(max-width:768px){#tb{flex-wrap:wrap;row-gap:6px;}#tacts{flex-wrap:wrap;}#user-info{flex-wrap:wrap;justify-content:flex-end;max-width:100%;}#user-nome{display:none;}#mdt-mo .mb{max-width:100vw;}}
 .logout-btn{background:none;border:1px solid var(--border);border-radius:6px;
   padding:4px 10px;font-size:11px;color:var(--silver3);cursor:pointer;transition:.15s;}
 .logout-btn:hover{background:var(--bg2);color:var(--dk);}
 @media print{
-  @page{size:A4;margin:14mm 16mm;}
+  @page{size:A4;margin:9mm 11mm;}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
   #sb,#tb,#ct,#mn,#toast,#ov,#ham,#bottom-nav,.mo,.np,
   #sol-screen,#portal-screen{display:none!important;}
@@ -956,7 +957,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão com o Firebase</a></div>
-    <div class="login-version">ChoppMaster ERP v3.2 · 15/11</div>
+    <div class="login-version">ChoppMaster ERP v3.3 · 18/11</div>
   </div>
 </div>
 
@@ -1065,6 +1066,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
         <div class="fi"><label>Entrada / Sinal R$</label><input type="text" id="ped-sig" placeholder="0,00" oninput="calcTot()"></div>
         <div class="fi"><label>Vencimento do Saldo</label><input type="date" id="ped-venc"></div>
       </div>
+      <div class="fi"><label>Modelo do pedido impresso</label><select id="ped-modelo"><option value="termos">📑 Com termos (responsabilidade da venda e cláusulas de locação)</option><option value="simples">📄 Simples (só dados, itens e total)</option></select></div>
       <div class="fi"><label>Observações</label><textarea id="ped-obs" placeholder="Informações adicionais..."></textarea></div>
     </div>
     <div class="mf">
@@ -1326,11 +1328,11 @@ function goTo(pg){
   if(pg==='pedidos'){
   var solCnt=countSolicitacoes();
   a.innerHTML='<button class="btn bp bsm" onclick="abrirPed()">+ Novo Pedido</button> '
-    +'<button class="btn bgh bsm" onclick="abrirLinkSolicitacao()">📤 Link Solicitação'+(solCnt>0?' <span style="background:#DC2626;color:#fff;border-radius:99px;font-size:10px;font-weight:700;padding:1px 6px;">'+solCnt+'</span>':'')+'</button>';
+    +'<button class="btn bgh bsm" onclick="abrirLinkCliente(\'pedido\')">🛒 Link de pedido <span id="web-badge" style="background:#DC2626;color:#fff;border-radius:99px;font-size:10px;font-weight:700;padding:1px 6px;'+(webPend('pedido').length?'':'display:none;')+'">'+webPend('pedido').length+'</span></button>';
 }
   if(pg==='produtos')a.innerHTML='<button class="btn bs bsm" onclick="abrirMov()">+ Mov. Estoque</button> <button class="btn bp bsm" onclick="abrirProd()">+ Produto</button>';
   if(pg==='maquinas')a.innerHTML='<button class="btn bp bsm" onclick="abrirMaq()">+ Máquina</button>';
-  if(pg==='clientes')a.innerHTML='<button class="btn bp bsm" onclick="abrirCli()">+ Cliente</button>';
+  if(pg==='clientes')a.innerHTML='<button class="btn bp bsm" onclick="abrirCli()">+ Cliente</button> <button class="btn bgh bsm" onclick="abrirLinkCliente(\'cadastro\')">📨 Link de cadastro <span id="webcli-badge" style="background:#DC2626;color:#fff;border-radius:99px;font-size:10px;font-weight:700;padding:1px 6px;'+(webPend('cadastro').length?'':'display:none;')+'">'+webPend('cadastro').length+'</span></button>';
   if(pg==='financeiro')a.innerHTML='<button class="btn bp bsm" onclick="abrirLanc()">+ Lançamento</button>';
   if(pg==='dashboard')renderDash();
   if(pg==='pedidos')renderPeds();
@@ -1340,7 +1342,9 @@ function goTo(pg){
   if(pg==='clientes')renderClis();
   if(pg==='config')renderConfig();
   if(pg==='calendario')renderCalendario();
-  if(pg==='pedidos')renderSolicitacoes();
+  if(pg==='pedidos'){renderSolicitacoes();renderWebPed();}
+  if(pg==='clientes')renderWebCli();
+  if(pg==='pedidos'||pg==='clientes'||pg==='calendario'||pg==='dashboard'){try{webSync();}catch(e){}}
   if(pg==='master')renderMaster();
   // Sincronizar barra inferior
   ['dashboard','calendario','pedidos','financeiro'].forEach(function(p){
@@ -1528,8 +1532,8 @@ function renderPeds(){
     var vc=p.vencSaldo&&p.vencSaldo<hj()&&st!=='pago'&&st!=='cancelado';
     var hM=(p.itens||[]).some(function(i){return i.tipo==='maquina';});
     return '<tr><td style="font-weight:700;color:var(--gd);">#'+p.num+'</td>'
-    +'<td><div style="font-weight:600;">'+(c?c.nome:'—')+'</div>'+(c&&c.tel?'<div style="font-size:11px;color:#9a8060;">'+c.tel+'</div>':'')+'</td>'
-    +'<td>'+dBr(p.data)+'</td><td>'+dBr(p.entrega)+'</td>'
+    +'<td><div style="font-weight:700;">'+(c?'<a href="#" onclick="fichaCli(\''+c.id+'\');return false;" style="color:#2563eb;text-decoration:underline;">'+escHtml(c.nome)+'</a>':'—')+'</div>'+(c&&c.tel?'<div style="font-size:11px;color:#9a8060;">'+c.tel+'</div>':'')+'</td>'
+    +'<td>'+dBr(p.data)+'</td><td>'+dBr(p.entrega)+(p.horaEntrega?' <span style="font-size:11px;color:#64748b;">'+p.horaEntrega+'</span>':'')+(p.entregaSt&&p.entregaSt!=='confirmado'?'<div style="font-size:10px;font-weight:700;color:#2563eb;">'+entStNome(p.entregaSt)+'</div>':'')+'</td>'
     +'<td>'+(p.devolucao?'<span style="'+(p.devolucao<hj()&&st!=='devolvido'&&st!=='cancelado'?'color:#991b1b;font-weight:700;':'')+'">'+dBr(p.devolucao)+'</span>':'—')+'</td>'
     +'<td style="font-weight:700;">'+R$(p.total)+'</td>'
     +'<td style="'+(sl>0?'color:#991b1b;font-weight:700;':'color:#166534;')+'">'+R$(sl)+(vc?' ⚠':'')+'</td>'
@@ -1538,7 +1542,7 @@ function renderPeds(){
     +'<button class="btn bsm bgh" onclick="verPed(\''+p.id+'\')" title="Ver">👁</button>'
     +'<button class="btn bsm bgh" onclick="abrirPed(\''+p.id+'\')" title="Editar">✏️</button>'
     +(sl>0&&st!=='cancelado'?'<button class="btn bsm bk" onclick="abrirRec(\''+p.id+'\')" title="Receber">💰</button>':'')
-    +'<button class="btn bsm bgh" onclick="imprimirPed(\''+p.id+'\')" title="Imprimir">🖨</button>'
+    +'<button class="btn bsm bgh" onclick="escolherImpressao(\''+p.id+'\')" title="Imprimir">🖨</button>'+(st!=='cancelado'?'<button class="btn bsm bk" onclick="enviarPedWhats(\''+p.id+'\')" title="Enviar no WhatsApp / assinatura">📲</button>':'')+(sl>0&&st!=='cancelado'?'<button class="btn bsm bs" onclick="cobrarPed(\''+p.id+'\')" title="Cobrar no WhatsApp">💬</button>':'')
     +(hM&&st!=='devolvido'&&st!=='cancelado'?'<button class="btn bsm bs" onclick="mkDev(\''+p.id+'\')" title="Devolvido">🔄</button>':'')
     +(st!=='cancelado'&&st!=='pago'?'<button class="btn bsm bd" onclick="cancelPed(\''+p.id+'\')" title="Cancelar">✕</button>':'')
     +'</div></td></tr>';
@@ -1552,6 +1556,7 @@ function abrirPed(id){
   ['ped-ent','ped-hora','ped-dev','ped-loc','ped-venc','ped-obs'].forEach(function(f){document.getElementById(f).value='';});
   setMoney('ped-sig',0);setMoney('ped-desc',0);
   document.getElementById('ped-pgto').value='a_combinar';
+  document.getElementById('ped-modelo').value=modeloPadrao();
   var sel=document.getElementById('ped-cli');
   sel.innerHTML='<option value="">— Selecione —</option>'
   +DB.clientes.map(function(c){return '<option value="'+c.id+'">'+escHtml(c.nome||'')+(c.tel?' | '+c.tel:'')+'</option>';}).join('')
@@ -1568,6 +1573,7 @@ function abrirPed(id){
       document.getElementById('ped-pgto').value=p.pgto||'a_combinar';
       document.getElementById('ped-venc').value=p.vencSaldo||'';
       document.getElementById('ped-obs').value=p.obs||'';
+      document.getElementById('ped-modelo').value=p.modelo||modeloPadrao();
       setMoney('ped-desc',p.desconto||0);
       _itens=JSON.parse(JSON.stringify(p.itens||[]));
     }
@@ -1670,7 +1676,7 @@ function salvarPed(imp){
     ped.devolucao=document.getElementById('ped-dev').value;ped.local=document.getElementById('ped-loc').value;ped.horaEntrega=document.getElementById('ped-hora').value||'';
     ped.pgto=document.getElementById('ped-pgto').value;ped.vencSaldo=document.getElementById('ped-venc').value;
     ped.obs=document.getElementById('ped-obs').value;ped.itens=JSON.parse(JSON.stringify(_itens));
-    ped.subtotal=sub;ped.desconto=desc;ped.total=tot;
+    ped.subtotal=sub;ped.desconto=desc;ped.total=tot;ped.modelo=document.getElementById('ped-modelo').value;
   } else {
     var num=String((DB.pedidos.length||0)+1).padStart(4,'0');
     ped={id:uid(),num:num,clienteId:cId,data:document.getElementById('ped-dt').value||hj(),entrega:document.getElementById('ped-ent').value,devolucao:document.getElementById('ped-dev').value,local:document.getElementById('ped-loc').value,horaEntrega:document.getElementById('ped-hora').value||'',pgto:document.getElementById('ped-pgto').value,vencSaldo:document.getElementById('ped-venc').value,obs:document.getElementById('ped-obs').value,itens:JSON.parse(JSON.stringify(_itens)),subtotal:sub,desconto:desc,total:tot,pagamentos:[],status:'pendente'};
@@ -1678,48 +1684,12 @@ function salvarPed(imp){
       ped.pagamentos.push({id:uid(),valor:sig,forma:ped.pgto,data:hj(),obs:'Entrada/Sinal'});
       _itens.filter(function(it){return it.tipo==='produto'&&it.refId;}).forEach(function(it){var pr=DB.produtos.find(function(x){return x.id===it.refId;});if(pr)pr.estoque=Math.max(0,(pr.estoque||0)-(it.qty||1));});
     }
+    ped.modelo=document.getElementById('ped-modelo').value;
     DB.pedidos.unshift(ped);
   }
-  ped.status=getStatus(ped);
+  ped.status=getStatus(ped);if(ped.webId&&_distId){webSyncPedido(ped).catch(function(){});}
   saveDB();closeM('mpd');toast(isEd?'Pedido atualizado!':'Pedido #'+ped.num+' criado!','ok');
   renderPeds();if(imp)setTimeout(function(){imprimirPed(ped.id);},300);
-}
-
-function verPed(id){
-  var p=DB.pedidos.find(function(x){return x.id===id;});if(!p)return;
-  var c=DB.clientes.find(function(x){return x.id===p.clienteId;});
-  var st=getStatus(p);var sl=getSaldo(p);
-  var pgT=(p.pagamentos||[]).reduce(function(s,x){return s+(x.valor||0);},0);
-  var itH=(p.itens||[]).map(function(it){
-    var nm=it.refId;if(it.tipo==='produto'){var pr=DB.produtos.find(function(x){return x.id===it.refId;});if(pr)nm=pr.nome;}
-    else{var mq=DB.maquinas.find(function(x){return x.id===it.refId;});if(mq)nm=mq.nome;}
-    return '<tr><td>'+(it.tipo==='produto'?'🍺':'🔧')+'</td><td>'+nm+'</td><td>'+it.qty+'</td><td>'+R$(it.preco)+'</td><td style="font-weight:700;">'+R$(it.qty*it.preco)+'</td></tr>';
-  }).join('');
-  document.getElementById('mdt').textContent='Pedido #'+p.num;
-  document.getElementById('mdb').innerHTML=
-  '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">'
-  +'<div><div style="font-size:11px;color:#9a8060;text-transform:uppercase;font-weight:700;margin-bottom:4px;">Cliente</div><div style="font-weight:700;font-size:15px;">'+(c?c.nome:'—')+'</div>'+(c&&c.tel?'<div style="font-size:12px;color:#9a8060;">'+c.tel+'</div>':'')+'</div>'
-  +'<div style="text-align:right;">'+bSt(st)+'<div style="font-size:22px;font-weight:800;color:var(--gd);margin-top:4px;">'+R$(p.total)+'</div>'+(p.desconto?'<div style="font-size:12px;color:#166534;">Desconto: -'+R$(p.desconto)+'</div>':'')+'</div></div>'
-  +'<div class="g3" style="margin-bottom:16px;font-size:12px;"><div><div style="color:#9a8060;font-weight:600;">Data</div>'+dBr(p.data)+'</div><div><div style="color:#9a8060;font-weight:600;">Entrega</div>'+dBr(p.entrega)+'</div><div><div style="color:#9a8060;font-weight:600;">Devolução</div>'+dBr(p.devolucao)+'</div>'+(p.local?'<div style="grid-column:span 3;margin-top:8px;"><div style="color:#9a8060;font-weight:600;">Local</div>'+escHtml(p.local||'')+'</div>':'')+'</div>'
-  +'<table class="tbl" style="margin-bottom:16px;"><thead><tr><th></th><th>Item</th><th>Qtd</th><th>Unit.</th><th>Total</th></tr></thead><tbody>'+itH+'</tbody></table>'
-  +'<div style="background:#faf4e8;border:1px solid #e8d8b0;border-radius:10px;padding:14px;margin-bottom:16px;">'
-  +(p.desconto?'<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;color:#9a8060;"><span>Subtotal</span><span>'+R$(p.subtotal||p.total+p.desconto)+'</span></div>'
-  +'<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;color:#166534;"><span>Desconto</span><span>- '+R$(p.desconto)+'</span></div>':'')
-  +'<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800;'+(p.desconto?'border-top:1px solid #e8d8b0;padding-top:8px;margin-top:6px;':'')+'"><span>Total</span><span>'+R$(p.total)+'</span></div>'
-  +'<div style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px;color:#166534;"><span>Recebido</span><span style="font-weight:700;">'+R$(pgT)+'</span></div>'
-  +'<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800;border-top:1px solid #e8d8b0;padding-top:8px;margin-top:6px;color:'+(sl>0?'#991b1b':'#166534')+'"><span>Saldo</span><span>'+R$(sl)+'</span></div></div>'
-  +((p.pagamentos||[]).length?'<div style="font-size:12px;font-weight:700;color:var(--br);margin-bottom:8px;">Pagamentos Recebidos</div>'+(p.pagamentos||[]).map(function(pg){return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid #f0e8d4;"><span>'+dBr(pg.data)+' — '+(pg.obs||pg.forma||'')+'</span><span style="font-weight:700;color:#166534;">'+R$(pg.valor)+'</span></div>';}).join(''):'')
-  +(p.obs?'<div style="margin-top:12px;font-size:12px;color:#9a8060;background:#f5f0e8;padding:10px;border-radius:8px;"><strong>Obs:</strong> '+escHtml(p.obs||'')+'</div>':'')
-  +(p.aprov?'<div style="margin-top:12px;background:#ECFDF5;border:1px solid #86efac;border-radius:8px;padding:10px;font-size:12px;color:#166534;"><strong>✅ Aprovado por '+escHtml(p.aprov.nome||'')+'</strong> em '+escHtml(new Date(p.aprov.em).toLocaleString('pt-BR'))+'<br><img src="'+escHtml(p.aprov.assinatura||'')+'" style="height:60px;background:#fff;border:1px solid #d1fae5;margin-top:6px;border-radius:4px;"></div>':'');
-  document.getElementById('mdf').innerHTML=
-  '<button class="btn bs" onclick="closeM(\'mdt-mo\')">Fechar</button>'
-  +(sl>0&&st!=='cancelado'?'<button class="btn bk" onclick="closeM(\'mdt-mo\');abrirRec(\''+p.id+'\')">💰 Receber</button>':'')
-  +'<button class="btn bgh" onclick="closeM(\'mdt-mo\');gerarLinkCliente(\''+p.id+'\')">📲 Gerar Link</button>'
-  +(st!=='cancelado'?'<button class="btn bk" onclick="closeM(\'mdt-mo\');enviarAprovacao(\''+p.id+'\')">✍️ Enviar p/ Assinatura</button>':'')
-  +(hM&&st!=='devolvido'&&st!=='cancelado'?'<button class="btn bs" onclick="closeM(\'mdt-mo\');mkDev(\''+p.id+'\')">✅ Devolver</button>':'')
-  +(st!=='cancelado'&&st!=='pago'?'<button class="btn bd" onclick="closeM(\'mdt-mo\');cancelPed(\''+p.id+'\')">🚫 Cancelar</button>':'')
-  +'<button class="btn bp" onclick="imprimirPed(\''+p.id+'\')">🖨 Imprimir</button>';
-  openM('mdt-mo');
 }
 
 function mkDev(id){if(!confirm('Marcar como devolvido?'))return;var p=DB.pedidos.find(function(x){return x.id===id;});if(!p)return;p.status='devolvido';saveDB();renderPeds();toast('Marcado como devolvido','ok');}
@@ -1991,198 +1961,10 @@ function renderClis(){
   var el=document.getElementById('lcli');
   if(!clis.length){el.innerHTML='<div style="padding:40px;text-align:center;color:#9a8060;">'+(bsc?'Nenhum cliente encontrado.':'Nenhum cliente. <button class="btn bp bsm" onclick="abrirCli()">+ Adicionar</button>')+'</div>';return;}
   el.innerHTML='<div style="overflow-x:auto;"><table class="tbl"><thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Telefone</th><th>E-mail</th><th>Pedidos</th><th>Ações</th></tr></thead><tbody>'
-  +clis.map(function(c){var ps=DB.pedidos.filter(function(p){return p.clienteId===c.id;}).length;return '<tr><td><div style="font-weight:700;">'+escHtml(c.nome||'')+'</div>'+(c.end?'<div style="font-size:11px;color:#9a8060;">'+(c.end.split('\n')[0])+'</div>':'')+'</td><td>'+(c.doc||'—')+'</td><td>'+(c.tel||'—')+'</td><td>'+(c.email||'—')+'</td><td><span class="badge bgb">'+ps+'</span></td><td><button class="btn bgh bsm" onclick="abrirCli(\''+c.id+'\')">✏️</button> <button class="btn bd bsm" onclick="exclC(\''+c.id+'\')">🗑</button></td></tr>';}).join('')+'</tbody></table></div>';
+  +clis.map(function(c){var ps=DB.pedidos.filter(function(p){return p.clienteId===c.id;}).length;return '<tr><td><div style="font-weight:700;"><a href="#" onclick="fichaCli(\''+c.id+'\');return false;" style="color:#2563eb;text-decoration:underline;">'+escHtml(c.nome||'')+'</a></div>'+(c.end?'<div style="font-size:11px;color:#9a8060;">'+(c.end.split('\n')[0])+'</div>':'')+'</td><td>'+(c.doc||'—')+'</td><td>'+(c.tel||'—')+'</td><td>'+(c.email||'—')+'</td><td><span class="badge bgb">'+ps+'</span></td><td><button class="btn bgh bsm" onclick="abrirCli(\''+c.id+'\')">✏️</button> <button class="btn bd bsm" onclick="exclC(\''+c.id+'\')">🗑</button></td></tr>';}).join('')+'</tbody></table></div>';
 }
 
 /* ===== IMPRESSÃO ===== */
-function imprimirPed(id){
-  var p=DB.pedidos.find(function(x){return x.id===id;});if(!p)return;
-  var cli=DB.clientes.find(function(x){return x.id===p.clienteId;})||{};
-  var sl=getSaldo(p);
-  var pgT=(p.pagamentos||[]).reduce(function(s,x){return s+(x.valor||0);},0);
-  var hM=(p.itens||[]).some(function(i){return i.tipo==='maquina';});
-  var nmM=(p.itens||[]).filter(function(i){return i.tipo==='maquina';})
-    .map(function(i){var m=DB.maquinas.find(function(x){return x.id===i.refId;});return m?m.nome:i.refId;}).join(', ');
-  var sub=p.subtotal||(p.total+(p.desconto||0));
-  var cfg=DB.config||{},empresa=cfg.empresa||'ChoppMaster';
-  var rawDoc=(cfg.cpfCnpj||cfg.cnpj||'').replace(/\D/g,'');
-  var docLbl=rawDoc?(rawDoc.length<=11?'CPF: ':'CNPJ: ')+(cfg.cpfCnpj||cfg.cnpj):'';
-  var sigNome=cfg.responsavel||empresa;
-  var cor=corPedido(cfg),logoH=cfg.logo?'<img src="'+escHtml(cfg.logo)+'" style="max-height:56px;max-width:130px;">':'';
-  var cliRaw=(cli.doc||'').replace(/\D/g,'');
-  var cliDocStr=cliRaw?(cliRaw.length<=11?'CPF: ':'CNPJ: ')+(cli.doc||''):'';
-
-  function fm(v){return 'R$ '+(parseFloat(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
-
-  /* Itens */
-  var itH=(p.itens||[]).map(function(it,idx){
-    var nm=it.refId,tp='';
-    if(it.tipo==='produto'){var pr=DB.produtos.find(function(x){return x.id===it.refId;});if(pr){nm=pr.nome;tp='&#127866;';}}
-    else{var mq=DB.maquinas.find(function(x){return x.id===it.refId;});if(mq){nm=mq.nome;tp='&#128295;';}}
-    var bg=idx%2===0?'#ffffff':'#f8fafc';
-    return '<tr style="background:'+bg+';">'
-      +'<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-size:10px;">'+tp+' '+nm+'</td>'
-      +'<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-size:10px;text-align:center;">'+it.qty+'</td>'
-      +'<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-size:10px;text-align:right;">'+fm(it.preco)+'</td>'
-      +'<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-size:10px;text-align:right;font-weight:700;color:#0f2044;">'+fm(it.qty*it.preco)+'</td>'
-      +'</tr>';
-  }).join('');
-
-  /* Termos de locação */
-  var termoH='';
-  if(hM){
-    var tl=cfg.termoLocacao||
-      '1. O LOCATÁRIO é responsável pelo uso adequado dos equipamentos durante o período de locação.\n'
-      +'2. Avarias ou danos causados por mau uso serão cobrados pelo valor de reposição.\n'
-      +'3. Atraso na devolução implicará cobrança proporcional por dia adicional.\n'
-      +'4. Os equipamentos devem ser devolvidos limpos e nas mesmas condições de entrega.\n'
-      +'5. O cancelamento com menos de 48h gera multa de 30% sobre o valor total.';
-    tl=tl.replace(/\{maquina\}/g,nmM).replace(/\{entrega\}/g,dBr(p.entrega)).replace(/\{devolucao\}/g,dBr(p.devolucao));
-    termoH='<div style="margin-top:10px;padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;">'
-      +'<div style="font-size:8px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Cláusulas de Locação</div>'
-      +tl.split('\n').filter(function(l){return l.trim();})
-         .map(function(l){return '<p style="font-size:8px;color:#374151;margin:3px 0;line-height:1.5;">'+l+'</p>';}).join('')
-      +'</div>';
-  }
-  var termoVH='';
-  if(cfg.termoVenda){
-    termoVH='<div style="margin-top:8px;padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;">'
-      +'<div style="font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Condições Gerais</div>'
-      +cfg.termoVenda.split('\n').filter(function(l){return l.trim();})
-         .map(function(l){return '<p style="font-size:8px;color:#374151;margin:2px 0;line-height:1.5;">'+l+'</p>';}).join('')
-      +'</div>';
-  }
-
-  var html=''
-  +'<div style="font-family:Arial,sans-serif;font-size:10px;color:#0f172a;'
-  +'max-width:178mm;margin:0 auto;background:#fff;">'
-
-  /* ── CABEÇALHO ── */
-  +'<div style="display:flex;justify-content:space-between;align-items:flex-start;'
-  +'padding-bottom:10px;margin-bottom:10px;border-bottom:2.5px solid '+cor+';">'
-  +'<div style="display:flex;align-items:center;gap:10px;">'+logoH+'<div>'
-  +'<div style="font-size:18px;font-weight:900;color:'+cor+';letter-spacing:-.3px;">'+(logoH?'':'&#127866; ')+empresa+'</div>'
-  +(cfg.slogan?'<div style="font-size:9px;font-style:italic;color:#475569;">'+escHtml(cfg.slogan)+'</div>':'')
-  +(cfg.responsavel?'<div style="font-size:9px;color:#374151;margin-top:1px;">'+cfg.responsavel+(docLbl?' &nbsp;·&nbsp; '+docLbl:'')+'</div>':'')
-  +(!cfg.responsavel&&docLbl?'<div style="font-size:9px;color:#374151;margin-top:1px;">'+docLbl+'</div>':'')
-  +((cfg.tel||cfg.email)?'<div style="font-size:9px;color:#64748b;">'+(cfg.tel||'')+(cfg.tel&&cfg.email?' &nbsp;·&nbsp; ':'')+( cfg.email||'')+'</div>':'')
-  +(cfg.end?'<div style="font-size:9px;color:#64748b;">'+cfg.end+'</div>':'')
-  +'</div></div>'
-  +'<div style="text-align:right;">'
-  +'<div style="font-size:10px;font-weight:700;color:'+cor+';text-transform:uppercase;letter-spacing:1px;">'+(hM?'Pedido de Venda + Locação':'Pedido de Venda')+'</div>'
-  +'<div style="font-size:20px;font-weight:900;color:#0f2044;">N&#186; '+String(p.num||'').padStart(4,'0')+'</div>'
-  +'<div style="font-size:9px;color:#64748b;">Emitido em: '+dBr(p.data)+'</div>'
-  +'</div></div>'
-
-  /* ── DADOS CLIENTE + DATAS ── */
-  +'<table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:9px;">'
-  +'<tr>'
-  +'<td style="padding:5px 8px;background:#f8fafc;border:1px solid #e2e8f0;width:38%;">'
-  +'<div style="font-size:7px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;">Cliente</div>'
-  +'<div style="font-size:11px;font-weight:700;color:#0f2044;margin-top:1px;">'+(cli.nome||'&mdash;')+'</div>'
-  +(cliDocStr?'<div style="font-size:8px;color:#374151;">'+cliDocStr+'</div>':'')
-  +'</td>'
-  +'<td style="padding:5px 8px;background:#f8fafc;border:1px solid #e2e8f0;border-left:none;width:22%;">'
-  +'<div style="font-size:7px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;">Telefone</div>'
-  +'<div style="font-size:9px;color:#0f172a;margin-top:1px;">'+(cli.tel||'&mdash;')+'</div>'
-  +'</td>'
-  +'<td style="padding:5px 8px;background:#f8fafc;border:1px solid #e2e8f0;border-left:none;width:22%;">'
-  +'<div style="font-size:7px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;">Data de Entrega</div>'
-  +'<div style="font-size:9px;font-weight:700;color:#0f172a;margin-top:1px;">'+dBr(p.entrega)+(p.horaEntrega?' &nbsp;&#128336; '+p.horaEntrega+'h':'')+'</div>'
-  +'</td>'
-  +(hM?'<td style="padding:5px 8px;background:#f8fafc;border:1px solid #e2e8f0;border-left:none;width:18%;">'
-  +'<div style="font-size:7px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;">Devolução</div>'
-  +'<div style="font-size:9px;color:#0f172a;margin-top:1px;">'+dBr(p.devolucao)+'</div>'
-  +'</td>':'<td style="padding:5px 8px;background:#f8fafc;border:1px solid #e2e8f0;border-left:none;width:18%;">'
-  +'<div style="font-size:7px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;">Pagamento</div>'
-  +'<div style="font-size:9px;color:#0f172a;margin-top:1px;">'+(p.pgto||'&mdash;').replace('a_combinar','A Combinar').replace('cartao_debito','Débito').replace('cartao_credito','Crédito').replace('transferencia','Transferência')+'</div>'
-  +'</td>')
-  +'</tr></table>'
-
-  /* ── LOCAL DA ENTREGA ── */
-  +(p.local?'<div style="display:flex;align-items:center;gap:10px;background:#eff6ff;'
-  +'border:1.5px solid #2563eb;border-radius:6px;padding:7px 12px;margin-bottom:8px;">'
-  +'<span style="font-size:13px;flex-shrink:0;">&#128204;</span>'
-  +'<div>'
-  +'<div style="font-size:7px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:.5px;">Local da Entrega</div>'
-  +'<div style="font-size:10px;font-weight:700;color:#0f2044;">'+escHtml(p.local||'')+'</div>'
-  +'</div></div>':'')
-
-  /* ── TABELA DE ITENS ── */
-  +'<table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:8px;">'
-  +'<thead>'
-  +'<tr style="background:#0f2044;">'
-  +'<th style="padding:7px 8px;color:#fff;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;text-align:left;">Item / Descrição</th>'
-  +'<th style="padding:7px 8px;color:#fff;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;text-align:center;width:45px;">Qtd</th>'
-  +'<th style="padding:7px 8px;color:#fff;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;text-align:right;width:80px;">Unitário</th>'
-  +'<th style="padding:7px 8px;color:#fff;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;text-align:right;width:80px;">Total</th>'
-  +'</tr></thead>'
-  +'<tbody>'+itH+'</tbody>'
-  +'</table>'
-
-  /* ── TOTAIS ── */
-  +'<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">'
-  +'<div style="text-align:right;min-width:200px;">'
-  +(p.desconto?'<div style="font-size:9px;color:#64748b;padding:2px 0;">Subtotal: '+fm(sub)+'</div>'
-  +'<div style="font-size:9px;color:#059669;padding:2px 0;">Desconto: &minus; '+fm(p.desconto)+'</div>':'')
-  +'<div style="font-size:14px;font-weight:900;color:#0f2044;border-top:2px solid #0f2044;padding-top:4px;margin-top:4px;">TOTAL: '+fm(p.total)+'</div>'
-  +(pgT>0?'<div style="font-size:9px;color:#059669;padding:2px 0;">Recebido: '+fm(pgT)+'</div>':'')
-  +(sl>0?'<div style="font-size:10px;font-weight:700;color:#dc2626;padding:2px 0;">Saldo: '+fm(sl)+'</div>':'')
-  +(sl===0?'<div style="font-size:9px;color:#059669;font-weight:700;">&#10003; PAGO</div>':'')
-  +(p.pgto&&p.pgto!=='a_combinar'?'<div style="font-size:8px;color:#64748b;">Forma: '+p.pgto.replace('cartao_debito','Débito').replace('cartao_credito','Crédito').replace('transferencia','Transferência')+'</div>':'')
-  +'</div></div>'
-
-  /* ── PIX ── */
-  +(cfg.pix&&sl>0?'<div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:5px;padding:6px 10px;margin-bottom:8px;font-size:9px;">'
-  +'<span style="font-weight:700;color:#065f46;">&#128179; PIX: '+cfg.pix+'</span>'
-  +'</div>':'')
-
-  /* ── OBSERVAÇÕES ── */
-  +(p.obs?'<div style="background:#eff6ff;border-left:3px solid #2563eb;border-radius:0 5px 5px 0;padding:6px 10px;margin-bottom:8px;">'
-  +'<div style="font-size:7px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">Observações</div>'
-  +'<div style="font-size:9px;color:#1e3a8a;">'+escHtml(p.obs||'')+'</div></div>':'')
-
-  /* ── TERMOS ── */
-  +termoH+termoVH
-
-  /* ── ASSINATURAS ── */
-  +'<div style="display:flex;gap:40px;margin-top:14px;padding-top:4px;">'
-  +'<div style="flex:1;text-align:center;">'
-  +'<div style="border-top:1.5px solid #334155;padding-top:6px;">'
-  +'<div style="font-size:10px;font-weight:700;color:#0f2044;">'+sigNome+'</div>'
-  +(docLbl?'<div style="font-size:8px;color:#64748b;">'+docLbl+'</div>':'')
-  +'<div style="font-size:8px;color:#94a3b8;margin-top:2px;">'+(hM?'LOCADOR':'VENDEDOR')+'</div>'
-  +'</div></div>'
-  +'<div style="flex:1;text-align:center;">'
-  +(p.aprov&&p.aprov.assinatura?'<img src="'+escHtml(p.aprov.assinatura)+'" style="height:44px;margin-bottom:-6px;">':'')
-  +'<div style="border-top:1.5px solid #334155;padding-top:6px;">'
-  +'<div style="font-size:10px;font-weight:700;color:#0f2044;">'+(cli.nome||'________________________________')+'</div>'
-  +(cliDocStr?'<div style="font-size:8px;color:#64748b;">'+cliDocStr+'</div>':'')
-  +'<div style="font-size:8px;color:#94a3b8;margin-top:2px;">'+(hM?'LOCAT\u00C1RIO':'COMPRADOR')+'</div>'
-  +(p.aprov?'<div style="font-size:7px;color:#166534;margin-top:2px;">Assinado digitalmente em '+escHtml(new Date(p.aprov.em).toLocaleString('pt-BR'))+'</div>':'')
-  +'</div></div>'
-  +'</div>'
-
-  /* ── RODAPÉ ── */
-  +'<div style="margin-top:12px;padding-top:6px;border-top:1px solid #e2e8f0;text-align:center;font-size:7.5px;color:#94a3b8;">'
-  +empresa+(cfg.tel?' &nbsp;·&nbsp; '+cfg.tel:'')+(cfg.email?' &nbsp;·&nbsp; '+cfg.email:'')
-  +' &nbsp;·&nbsp; Emitido em '+dBr(p.data)
-  +(cfg.rodape?'<div style="font-size:10px;font-weight:700;color:'+cor+';margin-top:4px;">'+escHtml(cfg.rodape)+'</div>':'')
-  +'</div>'
-
-  +'</div>'; // fim wrapper
-
-  var pa=document.getElementById('pra');
-  pa.style.display='block';
-  pa.innerHTML='<div style="padding:0;margin:0;">'+html+'</div>';
-
-  // Pequeno delay para garantir renderização antes do print
-  setTimeout(function(){
-    window.print();
-    setTimeout(function(){pa.style.display='none';pa.innerHTML='';},3000);
-  },150);
-}
-
 function escHtml(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 
 /* ---- APARÊNCIA DO PEDIDO (logo, cor, frase, rodapé) ---- */
@@ -2252,15 +2034,16 @@ function renderConfig(){
   h+='<div style="font-size:11px;color:#64748b;">Os dados da empresa (nome, CPF/CNPJ, telefone, e-mail, endere&ccedil;o e PIX) ficam no quadro acima e saem no cabe&ccedil;alho do pedido.</div>';
   h+='</div></div>';
   h+='<div class="card" style="margin-bottom:20px;"><div class="ch" style="background:#f0fdf4;"><h3 style="color:#166534;">&#128196; Texto de Responsabilidade &mdash; Venda</h3>';
-  h+='<span style="font-size:11px;background:#dcfce7;color:#166534;padding:3px 8px;border-radius:20px;font-weight:700;">Sempre impresso</span></div>';
+  h+='<span style="font-size:11px;background:#dcfce7;color:#166534;padding:3px 8px;border-radius:20px;font-weight:700;">Sai no pedido com termos</span></div>';
   h+='<div class="cb"><div style="font-size:12px;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;margin-bottom:12px;">Aparece em todos os pedidos impressos. Uma cl&aacute;usula por linha.</div>';
   h+='<div class="fi"><label>Cl&aacute;usulas de Responsabilidade</label>';
-  h+='<textarea id="cfg-tv" style="min-height:120px;font-size:13px;line-height:1.6;" placeholder="1. O comprador declara estar ciente das condi&ccedil;&otilde;es acordadas.">'+escHtml(cfg.termoVenda||"")+"</textarea></div></div></div>";
+  h+='<textarea id="cfg-tv" style="min-height:120px;font-size:13px;line-height:1.6;" placeholder="1. O comprador declara estar ciente das condi&ccedil;&otilde;es acordadas.">'+escHtml(cfg.termoVenda||TERMO_VENDA_PADRAO)+"</textarea></div><button type=\"button\" class=\"btn bs bsm\" onclick=\"document.getElementById('cfg-tv').value=TERMO_VENDA_PADRAO\">↺ Usar o texto padrão</button></div></div>";
   h+='<div class="card" style="margin-bottom:20px;"><div class="ch" style="background:#fffbeb;"><h3 style="color:#92400e;">&#128295; Cl&aacute;usulas de Loca&ccedil;&atilde;o &mdash; M&aacute;quinas</h3>';
-  h+='<span style="font-size:11px;background:#fef9c3;color:#d97706;padding:3px 8px;border-radius:20px;font-weight:700;">S&oacute; quando h&aacute; m&aacute;quina</span></div>';
+  h+='<span style="font-size:11px;background:#fef9c3;color:#d97706;padding:3px 8px;border-radius:20px;font-weight:700;">Sai quando o pedido tem m&aacute;quina</span></div>';
   h+='<div class="cb"><div style="font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px;margin-bottom:12px;">Complementa quando pedido cont&eacute;m chopeiras. Vari&aacute;veis: <code>{maquina}</code> <code>{entrega}</code> <code>{devolucao}</code></div>';
   h+='<div class="fi"><label>Cl&aacute;usulas de Loca&ccedil;&atilde;o</label>';
-  h+='<textarea id="cfg-tl" style="min-height:140px;font-size:13px;line-height:1.6;" placeholder="1. OBJETO: Loca&ccedil;&atilde;o de {maquina}.&#10;2. PRAZO: Entrega {entrega}. Devolu&ccedil;&atilde;o: {devolucao}.">'+escHtml(cfg.termoLocacao||"")+"</textarea></div></div></div>";
+  h+='<textarea id="cfg-tl" style="min-height:140px;font-size:13px;line-height:1.6;" placeholder="1. OBJETO: Loca&ccedil;&atilde;o de {maquina}.&#10;2. PRAZO: Entrega {entrega}. Devolu&ccedil;&atilde;o: {devolucao}.">'+escHtml(cfg.termoLocacao||TERMO_LOC_PADRAO)+"</textarea></div><button type=\"button\" class=\"btn bs bsm\" onclick=\"document.getElementById('cfg-tl').value=TERMO_LOC_PADRAO\">↺ Usar o texto padrão</button></div></div>";
+  h+=cfgPedidoOnlineHtml(cfg);
   if(!_distId){
   var fbSt=_fbUid&&_fbLastSaved?'<span style="background:#dcfce7;color:#166534;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:700;">&#9679; Conectado</span>':'<span style="background:#fee2e2;color:#991b1b;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:700;">&#9675; Desconectado</span>';
   h+='<div class="card" style="margin-bottom:20px;"><div class="ch" style="background:#eff6ff;"><h3 style="color:#1e40af;">&#9729; Sincroniza&ccedil;&atilde;o na Nuvem</h3>'+fbSt+'</div>';
@@ -2303,6 +2086,7 @@ function salvaConfig(){
   DB.config.termoVenda=gv("cfg-tv");
   DB.config.termoLocacao=gv("cfg-tl");
   DB.config.cor=gv("cfg-cor");DB.config.slogan=gv("cfg-slogan");DB.config.rodape=gv("cfg-rodape");
+  cfgPedidoOnlineLer();
   // [prod]
   saveDB();
   if(DB.config.fbPid&&DB.config.fbKey){
@@ -3835,9 +3619,11 @@ function calEventos(){
     var cli=(DB.clientes||[]).find(function(c){return c.id===p.clienteId;})||{};
     var nome=cli.nome||'Cliente';
     var enc=(p.status==='devolvido'||!!p.retiradoEm);
-    if(p.entrega) add(p.entrega,{ped:p,tipo:'entrega',txt:(p.horaEntrega?p.horaEntrega+' ':'')+'📦 '+nome,cls:enc?'pago':(p.entrega<hoje&&!p.entregueEm?'vencido':'entrega')});
+    var dEnt=p.entrega||p.data;
+    if(dEnt) add(dEnt,{ped:p,tipo:'entrega',txt:(p.horaEntrega?p.horaEntrega+' ':'')+(p.entrega?'📦 ':'🧾 ')+nome,cls:(enc||p.entregueEm)?'pago':(dEnt<hoje?'vencido':'entrega')});
     if(p.devolucao) add(p.devolucao,{ped:p,tipo:'retirada',txt:'↩ '+nome,cls:enc?'pago':(p.devolucao<hoje?'vencido':'retirada')});
   });
+  try{webPend('pedido').forEach(function(w){if(w.entrega)add(w.entrega,{web:w,tipo:'online',txt:(w.hora?w.hora+' ':'')+'🛒 '+(w.nome||'Pedido online'),cls:'retirada'});});}catch(e){}
   return ev;
 }
 function renderCalendario(){
@@ -3853,7 +3639,7 @@ function renderCalendario(){
   mid.appendChild(b1); mid.appendChild(t); mid.appendChild(b2);
   nav.appendChild(mid); nav.appendChild(bh); pg.appendChild(nav);
   var leg=document.createElement('div'); leg.className='cal-legend';
-  [['#16a34a','Entrega'],['#DC2626','Retirada / Atrasado'],['#94a3b8','Encerrado']].forEach(function(x){
+  [['#16a34a','Entrega'],['#DC2626','Retirada / Atrasado / Pedido online'],['#94a3b8','Entregue / encerrado']].forEach(function(x){
     var i=document.createElement('span'); i.className='cal-leg-item';
     var d=document.createElement('span'); d.className='cal-leg-dot'; d.style.background=x[0];
     i.appendChild(d); i.appendChild(document.createTextNode(x[1])); leg.appendChild(i);
@@ -3880,6 +3666,7 @@ function renderCalendario(){
   pg.appendChild(grid);
 }
 function calAbreEvento(e){
+  if(e.web){var d=_el('div','');d.appendChild(webCardPedido(e.web));dlg('🛒 Pedido online aguardando confirmação',d,[{txt:'Fechar',cls:'bs',fn:function(a){a.fechar();}}]);return;}
   var p=e.ped, cli=(DB.clientes||[]).find(function(c){return c.id===p.clienteId;})||{};
   document.getElementById('mcal-titulo').textContent=(e.tipo==='entrega'?'Entrega':'Retirada')+' · Pedido '+(p.num||'');
   var body=document.getElementById('mcal-body'); body.innerHTML='';
@@ -3905,7 +3692,8 @@ function enviarAprovacao(id){
   if(!cli.tel){toast('Cliente sem telefone cadastrado.','err');return;}
   var pgT=(p.pagamentos||[]).reduce(function(s,x){return s+(x.valor||0);},0);
   var hM=(p.itens||[]).some(function(i){return i.tipo==='maquina';});
-  var termos=(hM?cfg.termoLocacao:cfg.termoVenda)||'';
+  var _tm=termosCfg(cfg),_nmM=(p.itens||[]).filter(function(i){return i.tipo==='maquina';}).map(_nomeItem).join(', ');
+  var termos=(p.modelo||modeloPadrao())==='simples'?'':('TERMO DE RESPONSABILIDADE — VENDA\n'+_tm.venda+(hM?'\n\nCLÁUSULAS DE LOCAÇÃO — MÁQUINAS\n'+_tm.loc.replace(/\{maquina\}/g,_nmM).replace(/\{entrega\}/g,dBr(p.entrega)).replace(/\{devolucao\}/g,dBr(p.devolucao)):''));
   var snap={empresa:cfg.empresa||'ChoppMaster',tel:cfg.tel||'',num:p.num||'',cliente:cli.nome||'',doc:cli.doc||'',
     local:p.local||'',entrega:p.entrega||'',hora:p.horaEntrega||'',devolucao:p.devolucao||'',
     itens:(p.itens||[]).map(function(i){var n=i.refId;
@@ -3990,7 +3778,7 @@ function checkAprovarMode(){
     if(s.pago) box.appendChild(el('div','text-align:right;font-size:13px;color:#166534;','Já pago: '+brl(s.pago)));
     card.appendChild(box);
     if(s.termos){var tm=el('div','background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;padding:14px;margin-bottom:12px;font-size:12px;color:#78350F;line-height:1.6;');
-      tm.appendChild(el('strong','display:block;margin-bottom:4px;',s.locacao?'Cláusulas de locação':'Condições gerais'));
+      tm.appendChild(el('strong','display:block;margin-bottom:4px;','Termos do pedido — leia antes de assinar'));
       s.termos.split('\n').filter(function(l){return l.trim();}).forEach(function(l){tm.appendChild(el('div','',l));}); card.appendChild(tm);}
     var ab=el('div','background:#fff;border-radius:12px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.08);');
     ab.appendChild(el('div','font-size:15px;font-weight:800;color:#0F2044;margin-bottom:8px;','✍️ Aprovar e assinar'));
@@ -4505,16 +4293,22 @@ function abrirRecibo(r,l){
   function texto(x){var s=x.snap;return '🧾 *Recibo de pagamento nº '+s.num+'*\n\nRecebi de *'+s.pagador+'* a importância de *'+R$(s.valor)+'* ('+extensoBRL(s.valor)+'), referente a '+s.desc+'.\nPago em '+_dbr(s.data)+' via '+s.forma+'.\n'+(x.link?'\nAbrir / imprimir o recibo:\n'+x.link+'\n':'')+'\n— '+s.emissor.nome;}
   async function agir(tipo){
     if(busy)return;busy=true;m.style.display='none';
+    var wj=null;if(tipo==='wa'||tipo==='ambos'){if(_foneWa(tel.input.value).length>=12){try{wj=window.open('about:blank','_blank');}catch(e){}}}
     try{
       var x=await preparar();
+      if(tipo==='ambos'){var fw=_foneWa(tel.input.value),em2=mail.input.value.trim(),feitos=[];
+        if(fw.length>=12){var uw='https://wa.me/'+fw+'?text='+encodeURIComponent(texto(x));if(wj)wj.location.href=uw;else window.open(uw,'_blank');feitos.push('WhatsApp');}else if(wj){wj.close();}
+        if(/^\S+@\S+\.\S+$/.test(em2)){var ah2=document.createElement('a');ah2.href='mailto:'+encodeURIComponent(em2).replace('%40','@')+'?subject='+encodeURIComponent('Recibo nº '+x.snap.num+' — '+x.snap.emissor.nome)+'&body='+encodeURIComponent(texto(x).replace(/\*/g,''));document.body.appendChild(ah2);setTimeout(function(){ah2.click();document.body.removeChild(ah2);},400);feitos.push('e-mail');}
+        if(!feitos.length)mostraMsg(m,'Informe o WhatsApp com DDD e/ou o e-mail da distribuidora.');else toast('Recibo aberto para envio por '+feitos.join(' e ')+'.','ok');
+      }
       if(tipo==='print'){reciboImprimir(x.snap);}
-      else if(tipo==='wa'){var f=_foneWa(tel.input.value);if(f.length<12){mostraMsg(m,'Informe o WhatsApp com DDD.');}else window.open('https://wa.me/'+f+'?text='+encodeURIComponent(texto(x)),'_blank');}
+      else if(tipo==='wa'){var f=_foneWa(tel.input.value);if(f.length<12){mostraMsg(m,'Informe o WhatsApp com DDD.');}else{var uw1='https://wa.me/'+f+'?text='+encodeURIComponent(texto(x));if(wj)wj.location.href=uw1;else window.open(uw1,'_blank');}}
       else if(tipo==='mail'){var em=mail.input.value.trim();if(!/^\S+@\S+\.\S+$/.test(em)){mostraMsg(m,'Informe um e-mail válido.');}else{var ah=document.createElement('a');ah.href='mailto:'+encodeURIComponent(em).replace('%40','@')+'?subject='+encodeURIComponent('Recibo nº '+x.snap.num+' — '+x.snap.emissor.nome)+'&body='+encodeURIComponent(texto(x).replace(/\*/g,''));document.body.appendChild(ah);ah.click();document.body.removeChild(ah);}}
       if(!x.link)mostraMsg(m,'O link do recibo não pôde ser criado (verifique as regras do Firebase). A mensagem vai só com o texto.');
-    }catch(e){mostraMsg(m,'Erro: '+e.message);}
+    }catch(e){if(wj){try{wj.close();}catch(e2){}}mostraMsg(m,'Erro: '+e.message);}
     busy=false;
   }
-  dlg('🧾 Recibo de pagamento',c,[{txt:'🖨 Ver / Imprimir',cls:'bs',fn:function(){agir('print');}},{txt:'📱 WhatsApp',cls:'bk',fn:function(){agir('wa');}},{txt:'✉️ E-mail',cls:'bp',fn:function(){agir('mail');}},{txt:'Fechar',cls:'bs',fn:function(a){a.fechar();}}]);
+  dlg('🧾 Recibo de pagamento',c,[{txt:'📤 Enviar por WhatsApp e e-mail',cls:'bk',fn:function(){agir('ambos');}},{txt:'🖨 Ver / Imprimir',cls:'bs',fn:function(){agir('print');}},{txt:'📱 WhatsApp',cls:'bk',fn:function(){agir('wa');}},{txt:'✉️ E-mail',cls:'bp',fn:function(){agir('mail');}},{txt:'Fechar',cls:'bs',fn:function(a){a.fechar();}}]);
 }
 function checkReciboMode(){
   var q=new URLSearchParams((window.location&&window.location.search)||'');var tok=q.get('recibo');if(!tok)return false;
@@ -4869,6 +4663,695 @@ function checkCadastroMode(){
   };
   return true;
 }
+/* ===== IMPRESSÃO DO PEDIDO: modelo simples e modelo com termos ===== */
+var TERMO_VENDA_PADRAO=[
+'1. O chopp é um produto perecível. Depois de entregue e conferido pelo cliente, não é aceita devolução nem troca, salvo defeito de fabricação comunicado no ato da entrega.',
+'2. O cliente confere no recebimento a quantidade, o tipo, o lacre e a validade dos barris. O recebimento sem ressalva confirma que o produto foi entregue em perfeitas condições.',
+'3. O chopp deve ser mantido refrigerado, protegido do sol e do calor, e consumido dentro do prazo indicado. A vendedora não responde por perda de qualidade causada por armazenamento ou manuseio inadequado após a entrega.',
+'4. Os barris (vasilhames) são de propriedade da vendedora e ficam em comodato com o cliente, que deve devolvê-los vazios e sem danos na data combinada. Barril não devolvido ou danificado será cobrado pelo valor de reposição.',
+'5. Sobras de chopp em barril aberto não são reembolsadas.',
+'6. É proibida a venda ou o fornecimento de bebida alcoólica a menores de 18 anos (Lei 13.106/2015). O cliente é o único responsável pelo consumo no seu evento. Se beber, não dirija.',
+'7. O pagamento deve ser feito na forma e no prazo indicados neste pedido. O atraso gera multa de 2%, juros de 1% ao mês e correção monetária.',
+'8. O cancelamento deve ser comunicado com pelo menos 48 horas de antecedência da entrega. Após esse prazo, poderá ser cobrado o valor do frete e dos produtos já preparados.',
+'9. O cliente declara que leu e concorda com este termo ao assinar ou aprovar o pedido.'].join('\n');
+var TERMO_LOC_PADRAO=[
+'1. Os equipamentos descritos neste pedido (chopeira, cilindro de gás, barris, torneiras, mangueiras e acessórios) são de propriedade da locadora e são entregues limpos, testados e em perfeito funcionamento. O cliente confere tudo no recebimento.',
+'2. A locação vale pelo período indicado no pedido. A devolução fora do prazo gera cobrança de diária adicional por dia de atraso, no valor da diária contratada.',
+'3. O cliente é o responsável pela guarda e conservação dos equipamentos desde a entrega até a devolução, e responde por furto, roubo, perda, quebra ou dano, pagando o conserto ou o valor de reposição do item.',
+'4. O equipamento deve ser usado somente no endereço informado, em local coberto, plano e ventilado, ligado em tomada na voltagem correta (conferir 110V ou 220V antes de ligar). Danos por ligação em voltagem errada ou por queda de energia são de responsabilidade do cliente.',
+'5. É proibido emprestar, sublocar, transportar para outro local, abrir, consertar ou modificar o equipamento sem autorização da locadora.',
+'6. O cilindro de gás (CO2) deve ficar sempre em pé, preso, longe do calor e fora do alcance de crianças. Não mexa no regulador de pressão além do orientado na entrega.',
+'7. Em caso de defeito, o cliente deve parar de usar e avisar a locadora imediatamente. A locadora fará o conserto ou a troca no menor prazo possível. Não há reembolso por defeito causado por mau uso.',
+'8. A locadora não responde por danos a pessoas ou a bens decorrentes do uso inadequado do equipamento pelo cliente ou por terceiros.',
+'9. O equipamento deve ser devolvido completo e nas mesmas condições em que foi entregue. Peças ou acessórios faltantes serão cobrados pelo valor de reposição.',
+'10. O atraso no pagamento gera multa de 2%, juros de 1% ao mês e correção monetária. A locadora pode retirar o equipamento em caso de falta de pagamento ou de uso em desacordo com este termo.',
+'11. O cliente declara que recebeu as orientações de uso e que leu e concorda com este termo ao assinar ou aprovar o pedido.'].join('\n');
+function termosCfg(cfg){cfg=cfg||DB.config||{};return {venda:String(cfg.termoVenda||'').trim()||TERMO_VENDA_PADRAO,loc:String(cfg.termoLocacao||'').trim()||TERMO_LOC_PADRAO};}
+function pgtoNome(c){return ({a_combinar:'A combinar',pix:'PIX',dinheiro:'Dinheiro',cartao_debito:'Cartão de débito',cartao_credito:'Cartão de crédito',transferencia:'Transferência',boleto:'Boleto'})[c]||c||'—';}
+function modeloPadrao(){var m=(DB.config||{}).modeloPedido;return m==='simples'?'simples':'termos';}
+function _nomeItem(it){var nm=it.nome||it.refId;if(it.tipo==='produto'){var pr=(DB.produtos||[]).find(function(x){return x.id===it.refId;});if(pr)nm=pr.nome;}else{var mq=(DB.maquinas||[]).find(function(x){return x.id===it.refId;});if(mq)nm=mq.nome;}return nm||'—';}
+function _unItem(it){if(it.tipo==='maquina')return 'loc.';var pr=(DB.produtos||[]).find(function(x){return x.id===it.refId;});return (pr&&pr.un)||'un';}
+function _codItem(it){var arr=it.tipo==='produto'?(DB.produtos||[]):(DB.maquinas||[]);var i=arr.findIndex(function(x){return x.id===it.refId;});return (it.tipo==='produto'?'P':'M')+(i>=0?(i+1):'');}
+function _dtHoraAgora(){var d=new Date();return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR');}
+function _mandaImprimir(html){
+  var pa=document.getElementById('pra');pa.style.display='block';pa.innerHTML=html;
+  setTimeout(function(){window.print();setTimeout(function(){pa.style.display='none';pa.innerHTML='';},3000);},150);
+}
+function imprimirPed(id,modelo){
+  var p=DB.pedidos.find(function(x){return x.id===id;});if(!p)return;
+  modelo=modelo||p.modelo||modeloPadrao();
+  _mandaImprimir(modelo==='simples'?htmlPedSimples(p):htmlPedTermos(p));
+}
+function escolherImpressao(id){
+  var p=DB.pedidos.find(function(x){return x.id===id;});if(!p)return;
+  var c=_el('div','');c.appendChild(_el('p','margin:0 0 6px;font-size:13px;color:#475569;line-height:1.5;','Escolha o modelo do pedido nº '+(p.num||'')+':'));
+  c.appendChild(_el('p','margin:0;font-size:12px;color:#64748B;line-height:1.5;','• Simples: só os dados, os itens e o total, em formato de cupom.\n'));
+  c.appendChild(_el('p','margin:0;font-size:12px;color:#64748B;line-height:1.5;','• Com termos: inclui o termo de responsabilidade da venda e as cláusulas de locação das máquinas.'));
+  dlg('🖨 Imprimir pedido',c,[{txt:'Cancelar',cls:'bs',fn:function(a){a.fechar();}},{txt:'📄 Simples',cls:'bs',fn:function(a){a.fechar();imprimirPed(id,'simples');}},{txt:'📑 Com termos',cls:'bp',fn:function(a){a.fechar();imprimirPed(id,'termos');}}]);
+}
+/* --- modelo SIMPLES (cupom, fonte de máquina de escrever) --- */
+function htmlPedSimples(p){
+  var cli=DB.clientes.find(function(x){return x.id===p.clienteId;})||{},cfg=DB.config||{};
+  var pgT=(p.pagamentos||[]).reduce(function(s,x){return s+(x.valor||0);},0),sl=getSaldo(p);
+  var sub=(p.itens||[]).reduce(function(s,i){return s+(parseFloat(i.qty)||0)*(parseFloat(i.preco)||0);},0)||p.subtotal||p.total||0;
+  function n2(v){return (parseFloat(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function E(v){return escHtml(v==null?'':String(v));}
+  function L(rot,val,bold){return '<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+E(rot)+' '+(bold?'<b>'+E(val)+'</b>':E(val))+'</div>';}
+  var hr='<div style="border-top:1px dashed #555;margin:5px 0;"></div>';
+  var endCli=[cli.end,cli.bairro,cli.cidade].filter(Boolean).join(' - ');
+  var cond=sl<=0?'Pago':(pgT>0?'Entrada + saldo':(p.vencSaldo?'A prazo':'À vista'));
+  var entregaStr=(p.entrega?dBr(p.entrega):'')+(p.horaEntrega?' '+p.horaEntrega:'');
+  var esq=L('Cliente......:',cli.nome||'—',true)+L('CPF/CNPJ.....:',cli.doc||'')+L('Fones/e-mail.:',[cli.tel,cli.email].filter(Boolean).join(' / '))+L('Endereço.....:',endCli)+L('Local entrega:',p.local||'',true)+L('Vendedor.....:',cfg.responsavel||cfg.empresa||'')+L('Observações..:',p.obs||'');
+  var dir=L('Emissão....:',dBr(p.data))+L('Entrega....:',entregaStr,true)+(p.devolucao?L('Devolução..:',dBr(p.devolucao)):'')+L('Forma cob..:',pgtoNome(p.pgto),true)+L('Cond. pagto:',cond)+L('Recebido...:','R$ '+n2(pgT))+L('Saldo......:','R$ '+n2(sl),sl>0);
+  var venc=p.vencSaldo||p.entrega||p.data;
+  var itens=(p.itens||[]),qtdT=itens.reduce(function(s,i){return s+(parseFloat(i.qty)||0);},0);
+  var th='padding:2px 4px;font-weight:400;text-align:left;border-bottom:1px dashed #555;';
+  var td='padding:2px 4px;border-bottom:1px solid #ddd;';
+  var rows=itens.map(function(it){return '<tr><td style="'+td+'">'+E(_codItem(it))+'</td><td style="'+td+'">'+E(_nomeItem(it))+'</td><td style="'+td+'">'+E(_unItem(it))+'</td><td style="'+td+'text-align:right;">'+E(it.qty)+'</td><td style="'+td+'text-align:right;">'+n2(it.preco)+'</td><td style="'+td+'text-align:right;">'+n2((it.qty||0)*(it.preco||0))+'</td></tr>';}).join('');
+  return '<div style="font-family:\'Courier New\',Courier,monospace;font-size:10.5px;color:#111;max-width:186mm;margin:0 auto;line-height:1.35;">'
+  +'<div style="font-size:15px;font-weight:700;">'+E(cfg.empresa||'ChoppMaster')+'</div>'
+  +'<div>Fones: '+E(cfg.tel||'')+(cfg.cpfCnpj?' &nbsp; CPF/CNPJ: '+E(cfg.cpfCnpj):'')+'</div>'
+  +(cfg.end?'<div>'+E(cfg.end)+'</div>':'')
+  +'<div style="display:flex;justify-content:space-between;margin-top:6px;"><span>'+E(_dtHoraAgora())+'</span><b>PEDIDO N°:'+E(p.num||'')+'</b><span></span></div>'
+  +hr+'<div style="display:grid;grid-template-columns:60% 40%;column-gap:10px;">'+'<div>'+esq+'</div><div>'+dir+'</div></div>'
+  +hr+'<table style="width:100%;border-collapse:collapse;font-size:10.5px;"><tr><td style="padding:1px 4px;">Número</td><td>Vencimento</td><td style="text-align:right;">Valor</td><td style="width:45%;"></td></tr>'
+  +'<tr><td style="padding:1px 4px;"><b>'+E(p.num||'')+'/1-1</b></td><td><b>'+dBr(venc)+'</b></td><td style="text-align:right;"><b>'+n2(sl>0?sl:p.total)+'</b></td><td></td></tr></table>'
+  +hr+'<table style="width:100%;border-collapse:collapse;font-size:10.5px;"><thead><tr><th style="'+th+'width:52px;">Código</th><th style="'+th+'">Descrição</th><th style="'+th+'width:44px;">Unid.</th><th style="'+th+'width:44px;text-align:right;">Qtde.</th><th style="'+th+'width:78px;text-align:right;">Vlr. unit.</th><th style="'+th+'width:84px;text-align:right;">Vlr. total</th></tr></thead><tbody>'+rows+'</tbody></table>'
+  +hr+'<div style="display:flex;justify-content:space-between;font-weight:700;"><span>'+itens.length+' itens</span><span>Total unid.:'+qtdT+'</span><span>'+n2(sub)+'</span></div>'
+  +'<div style="text-align:right;">Desconto: '+n2(p.desconto||0)+'</div>'
+  +'<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:22px;gap:12px;">'
+  +'<span style="font-size:9px;">ChoppMaster</span>'
+  +'<div style="text-align:center;flex:1;"><div style="border-top:1px dashed #333;margin:0 10px;"></div>Ass. vendedor</div>'
+  +'<div style="text-align:center;flex:1;">'+(p.aprov&&p.aprov.assinatura?'<img src="'+escHtml(p.aprov.assinatura)+'" style="height:34px;margin-bottom:-4px;">':'')+'<div style="border-top:1px dashed #333;margin:0 10px;"></div>Ass. cliente</div>'
+  +'<div style="background:#ccc;padding:5px 10px;font-weight:700;white-space:nowrap;">Total: R$ '+n2(p.total)+'</div></div>'
+  +'</div>';
+}
+/* --- modelo COM TERMOS (cabe em 1 folha A4) --- */
+function htmlPedTermos(p){
+  var cli=DB.clientes.find(function(x){return x.id===p.clienteId;})||{},cfg=DB.config||{},tm=termosCfg(cfg);
+  var pgT=(p.pagamentos||[]).reduce(function(s,x){return s+(x.valor||0);},0),sl=getSaldo(p);
+  var hM=(p.itens||[]).some(function(i){return i.tipo==='maquina';});
+  var nmM=(p.itens||[]).filter(function(i){return i.tipo==='maquina';}).map(_nomeItem).join(', ');
+  var sub=p.subtotal||((p.total||0)+(p.desconto||0)),cor=corPedido(cfg),empresa=cfg.empresa||'ChoppMaster';
+  function E(v){return escHtml(v==null?'':String(v));}
+  function fm(v){return 'R$ '+(parseFloat(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function rot(t,c){return '<div style="font-size:7px;font-weight:700;color:'+(c||'#64748b')+';text-transform:uppercase;letter-spacing:.5px;">'+t+'</div>';}
+  var rawDoc=String(cfg.cpfCnpj||cfg.cnpj||'').replace(/\D/g,''),docLbl=rawDoc?(rawDoc.length<=11?'CPF ':'CNPJ ')+E(cfg.cpfCnpj||cfg.cnpj):'';
+  var logoH=cfg.logo?'<img src="'+E(cfg.logo)+'" style="max-height:44px;max-width:110px;">':'';
+  var itH=(p.itens||[]).map(function(it,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+';"><td style="padding:3px 6px;">'+(it.tipo==='maquina'?'🔧 ':'🍺 ')+E(_nomeItem(it))+(it.tipo==='maquina'?' <span style="color:#92400e;font-size:7px;">(locação)</span>':'')+'</td><td style="padding:3px 6px;text-align:center;">'+E(it.qty)+'</td><td style="padding:3px 6px;text-align:right;">'+fm(it.preco)+'</td><td style="padding:3px 6px;text-align:right;font-weight:700;">'+fm((it.qty||0)*(it.preco||0))+'</td></tr>';}).join('');
+  function clausulas(t,titulo,corT,bg,bd){var ls=String(t).replace(/\{maquina\}/g,nmM||'equipamento').replace(/\{entrega\}/g,dBr(p.entrega)).replace(/\{devolucao\}/g,dBr(p.devolucao)).split('\n').filter(function(l){return l.trim();});
+    return '<div style="flex:1;min-width:0;padding:6px 8px;background:'+bg+';border:1px solid '+bd+';border-radius:5px;">'+rot(titulo,corT)+ls.map(function(l){return '<p style="font-size:6.6px;color:#334155;margin:1.5px 0;line-height:1.32;text-align:justify;">'+E(l)+'</p>';}).join('')+'</div>';}
+  var endCli=[cli.end,cli.bairro,cli.cidade].filter(Boolean).join(' - ');
+  var cond=sl<=0?'✔ PAGO':(p.vencSaldo?'Saldo vence em '+dBr(p.vencSaldo):(pgT>0?'Saldo na entrega':'Pagar na entrega'));
+  return '<div style="font-family:Arial,Helvetica,sans-serif;font-size:9px;color:#0f172a;max-width:188mm;margin:0 auto;">'
+  /* cabeçalho */
+  +'<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2.5px solid '+cor+';padding-bottom:6px;margin-bottom:7px;">'
+  +'<div style="display:flex;align-items:center;gap:8px;">'+logoH+'<div><div style="font-size:16px;font-weight:900;color:'+cor+';">'+(logoH?'':'🍺 ')+E(empresa)+'</div>'
+  +(cfg.slogan?'<div style="font-size:8px;font-style:italic;color:#475569;">'+E(cfg.slogan)+'</div>':'')
+  +'<div style="font-size:8px;color:#475569;">'+[E(cfg.responsavel),docLbl,E(cfg.tel),E(cfg.email)].filter(Boolean).join(' · ')+'</div>'
+  +(cfg.end?'<div style="font-size:8px;color:#64748b;">'+E(cfg.end)+'</div>':'')+'</div></div>'
+  +'<div style="text-align:right;"><div style="font-size:8px;font-weight:700;color:'+cor+';text-transform:uppercase;letter-spacing:1px;">'+(hM?'Pedido de venda + locação':'Pedido de venda')+'</div>'
+  +'<div style="font-size:19px;font-weight:900;color:#0f2044;line-height:1.1;">Nº '+E(String(p.num||'').padStart(4,'0'))+'</div><div style="font-size:8px;color:#64748b;">Emitido em '+dBr(p.data)+'</div></div></div>'
+  /* cliente */
+  +'<div style="display:flex;gap:6px;margin-bottom:6px;"><div style="flex:2;background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px;padding:5px 8px;">'+rot('Cliente')
+  +'<div style="font-size:11px;font-weight:800;color:#0f2044;">'+E(cli.nome||'—')+'</div><div style="font-size:8px;color:#334155;">'+[cli.doc?'CPF/CNPJ '+E(cli.doc):'',E(cli.tel),E(cli.email)].filter(Boolean).join(' · ')+'</div>'
+  +(endCli?'<div style="font-size:8px;color:#64748b;">'+E(endCli)+'</div>':'')+'</div></div>'
+  /* destaques: entrega + pagamento */
+  +'<div style="display:flex;gap:6px;margin-bottom:7px;">'
+  +'<div style="flex:3;border:2px solid #2563eb;background:#eff6ff;border-radius:6px;padding:6px 9px;">'+rot('📍 Entrega',  '#1e40af')
+  +'<div style="display:flex;gap:14px;margin-top:2px;"><div>'+rot('Data e horário','#1e40af')+'<div style="font-size:13px;font-weight:900;color:#0f2044;">'+(p.entrega?dBr(p.entrega):'A combinar')+(p.horaEntrega?' às '+E(p.horaEntrega):'')+'</div></div>'
+  +(hM?'<div>'+rot('Devolução','#1e40af')+'<div style="font-size:11px;font-weight:800;color:#0f2044;">'+(p.devolucao?dBr(p.devolucao):'A combinar')+'</div></div>':'')+'</div>'
+  +'<div style="margin-top:3px;">'+rot('Endereço / local da entrega','#1e40af')+'<div style="font-size:11px;font-weight:800;color:#0f2044;">'+E(p.local||endCli||'—')+'</div></div></div>'
+  +'<div style="flex:2;border:2px solid #059669;background:#ecfdf5;border-radius:6px;padding:6px 9px;">'+rot('💳 Pagamento','#065f46')
+  +'<div style="font-size:12px;font-weight:900;color:#065f46;">'+E(pgtoNome(p.pgto))+'</div>'
+  +'<div style="font-size:8.5px;color:#065f46;font-weight:700;">'+E(cond)+'</div>'
+  +'<div style="display:flex;justify-content:space-between;font-size:8.5px;margin-top:3px;"><span>Total</span><b>'+fm(p.total)+'</b></div>'
+  +'<div style="display:flex;justify-content:space-between;font-size:8.5px;"><span>Recebido</span><b style="color:#059669;">'+fm(pgT)+'</b></div>'
+  +'<div style="display:flex;justify-content:space-between;font-size:9.5px;"><span>Saldo</span><b style="color:'+(sl>0?'#dc2626':'#059669')+';">'+fm(sl)+'</b></div>'
+  +(cfg.pix&&sl>0?'<div style="font-size:8px;margin-top:2px;color:#065f46;"><b>PIX:</b> '+E(cfg.pix)+'</div>':'')+'</div></div>'
+  /* itens */
+  +'<table style="width:100%;border-collapse:collapse;font-size:8.5px;margin-bottom:4px;"><thead><tr style="background:#0f2044;color:#fff;"><th style="padding:4px 6px;text-align:left;font-size:7.5px;">ITEM</th><th style="padding:4px 6px;font-size:7.5px;width:36px;">QTD</th><th style="padding:4px 6px;text-align:right;font-size:7.5px;width:70px;">UNITÁRIO</th><th style="padding:4px 6px;text-align:right;font-size:7.5px;width:76px;">TOTAL</th></tr></thead><tbody>'+itH+'</tbody></table>'
+  +'<div style="display:flex;justify-content:flex-end;gap:14px;font-size:8.5px;margin-bottom:5px;">'+(p.desconto?'<span>Subtotal '+fm(sub)+'</span><span style="color:#059669;">Desconto − '+fm(p.desconto)+'</span>':'')+'<span style="font-size:12px;font-weight:900;color:#0f2044;">TOTAL '+fm(p.total)+'</span></div>'
+  +(p.obs?'<div style="background:#fffbeb;border-left:3px solid #f59e0b;padding:4px 8px;margin-bottom:5px;font-size:8.5px;"><b>Obs.:</b> '+E(p.obs)+'</div>':'')
+  /* termos lado a lado */
+  +'<div style="display:flex;gap:6px;margin-bottom:6px;">'+clausulas(tm.venda,'Termo de responsabilidade — venda','#475569','#f8fafc','#e2e8f0')+(hM?clausulas(tm.loc,'Cláusulas de locação — máquinas','#92400e','#fffbeb','#fde68a'):'')+'</div>'
+  /* recebimento */
+  +'<div style="border:1px dashed #94a3b8;border-radius:5px;padding:5px 8px;font-size:8.5px;margin-bottom:6px;">'+rot('Recebimento da entrega')
+  +'Recebi os produtos'+(hM?' e equipamentos':'')+' acima em perfeitas condições em ____/____/______ às ____:____ &nbsp; Nome legível: ________________________________</div>'
+  /* assinaturas */
+  +'<div style="display:flex;gap:30px;margin-top:16px;">'
+  +'<div style="flex:1;text-align:center;"><div style="border-top:1.2px solid #334155;padding-top:3px;font-size:9px;font-weight:700;">'+E(cfg.responsavel||empresa)+'</div><div style="font-size:7px;color:#94a3b8;">'+(hM?'VENDEDOR / LOCADOR':'VENDEDOR')+'</div></div>'
+  +'<div style="flex:1;text-align:center;">'+(p.aprov&&p.aprov.assinatura?'<img src="'+E(p.aprov.assinatura)+'" style="height:36px;margin-bottom:-5px;">':'')
+  +'<div style="border-top:1.2px solid #334155;padding-top:3px;font-size:9px;font-weight:700;">'+E(cli.nome||'')+'</div><div style="font-size:7px;color:#94a3b8;">'+(hM?'COMPRADOR / LOCATÁRIO':'COMPRADOR')+(cli.doc?' · '+E(cli.doc):'')+'</div>'
+  +(p.aprov?'<div style="font-size:6.5px;color:#166534;">Assinado digitalmente por '+E(p.aprov.nome||'')+' em '+E(new Date(p.aprov.em).toLocaleString('pt-BR'))+'</div>':'')+'</div></div>'
+  +'<div style="margin-top:7px;padding-top:4px;border-top:1px solid #e2e8f0;text-align:center;font-size:7px;color:#94a3b8;">'+E(empresa)+(cfg.tel?' · '+E(cfg.tel):'')+' · Emitido em '+dBr(p.data)
+  +(cfg.rodape?'<div style="font-size:9px;font-weight:700;color:'+cor+';margin-top:2px;">'+E(cfg.rodape)+'</div>':'')+'</div></div>';
+}
+
+/* ===== PEDIDO: visualizar, ficha do cliente, cobrança, entrega com GPS, WhatsApp ===== */
+var ENT_ST=[['aguardando','⏳ Aguardando confirmação'],['confirmado','✅ Confirmado'],['saiu','🚚 Saiu para entrega'],['entregue','📦 Entregue'],['recolhido','🔄 Equipamento recolhido']];
+function entStNome(s){var x=ENT_ST.filter(function(e){return e[0]===s;})[0];return x?x[1]:'';}
+function entStAtual(p){return p.entregaSt||(p.retiradoEm?'recolhido':(p.entregueEm?'entregue':'confirmado'));}
+function _waLink(tel,msg){var f=_foneWa(tel);return 'https://wa.me/'+(f.length>=12?f:'')+'?text='+encodeURIComponent(msg);}
+function _abreWa(tel,msg){var w=window.open(_waLink(tel,msg),'_blank');if(!w){location.href=_waLink(tel,msg);}}
+function verPed(id){
+  var p=DB.pedidos.find(function(x){return x.id===id;});if(!p)return;
+  var c=DB.clientes.find(function(x){return x.id===p.clienteId;});
+  var st=getStatus(p),sl=getSaldo(p),hM=(p.itens||[]).some(function(i){return i.tipo==='maquina';});
+  var pgT=(p.pagamentos||[]).reduce(function(s,x){return s+(x.valor||0);},0),E=escHtml;
+  var itH=(p.itens||[]).map(function(it){return '<tr><td>'+(it.tipo==='produto'?'🍺':'🔧')+'</td><td>'+E(_nomeItem(it))+'</td><td>'+E(it.qty)+'</td><td>'+R$(it.preco)+'</td><td style="font-weight:700;">'+R$((it.qty||0)*(it.preco||0))+'</td></tr>';}).join('');
+  var est=entStAtual(p);
+  var botsEnt=ENT_ST.filter(function(e){return e[0]!=='aguardando'&&(hM||e[0]!=='recolhido');}).map(function(e){var on=est===e[0];return '<button class="btn bsm '+(on?'bp':'bs')+'" onclick="setEntregaSt(\''+p.id+'\',\''+e[0]+'\')">'+e[1]+'</button>';}).join(' ');
+  var gpsOn=_gps.ped===p.id;
+  document.getElementById('mdt').textContent='Pedido #'+p.num;
+  document.getElementById('mdb').innerHTML=
+  '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:10px;flex-wrap:wrap;">'
+  +'<div><div style="font-size:11px;color:#9a8060;text-transform:uppercase;font-weight:700;margin-bottom:4px;">Cliente</div>'
+  +(c?'<a href="#" onclick="closeM(\'mdt-mo\');fichaCli(\''+c.id+'\');return false;" style="font-weight:800;font-size:15px;color:#2563eb;text-decoration:underline;">'+E(c.nome)+'</a>':'<div style="font-weight:700;">—</div>')
+  +(c&&c.tel?'<div style="font-size:12px;color:#9a8060;">'+E(c.tel)+'</div>':'')+'</div>'
+  +'<div style="text-align:right;">'+bSt(st)+'<div style="font-size:22px;font-weight:800;color:var(--gd);margin-top:4px;">'+R$(p.total)+'</div>'+(p.desconto?'<div style="font-size:12px;color:#166534;">Desconto: -'+R$(p.desconto)+'</div>':'')+'</div></div>'
+  +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px;">'
+  +'<div style="background:#eff6ff;border:2px solid #2563eb;border-radius:10px;padding:8px 10px;grid-column:1/-1;"><div style="font-size:10px;font-weight:800;color:#1e40af;text-transform:uppercase;">📍 Local da entrega</div><div style="font-size:14px;font-weight:800;color:#0f2044;">'+E(p.local||'—')+'</div></div>'
+  +'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;"><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;">Entrega</div><div style="font-weight:800;">'+dBr(p.entrega)+(p.horaEntrega?' às '+E(p.horaEntrega):'')+'</div></div>'
+  +(hM?'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;"><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;">Devolução</div><div style="font-weight:800;">'+dBr(p.devolucao)+'</div></div>':'')
+  +'<div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:10px;padding:8px 10px;"><div style="font-size:10px;font-weight:700;color:#065f46;text-transform:uppercase;">Pagamento</div><div style="font-weight:800;color:#065f46;">'+E(pgtoNome(p.pgto))+'</div></div>'
+  +'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;"><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;">Pedido feito em</div><div style="font-weight:800;">'+dBr(p.data)+'</div></div></div>'
+  +'<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:12px;"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;"><div style="font-size:12px;font-weight:800;color:var(--dk);">🚚 Andamento da entrega: <span style="color:#2563eb;">'+E(entStNome(est))+'</span></div>'
+  +'<button class="btn bsm bgh" onclick="abrirAcompanhamento(\''+p.id+'\')">📍 Link de acompanhamento</button></div>'
+  +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'+botsEnt+'</div>'
+  +(gpsOn?'<div style="margin-top:6px;font-size:12px;color:#065f46;font-weight:700;">📡 Compartilhando a localização deste aparelho com o cliente. <a href="#" onclick="gpsParar();verPed(\''+p.id+'\');return false;">Parar</a></div>':(est==='saiu'?'<div style="margin-top:6px;"><button class="btn bsm bk" onclick="gpsIniciar(\''+p.id+'\');verPed(\''+p.id+'\')">📡 Ligar GPS neste aparelho</button></div>':''))
+  +'<div style="font-size:11px;color:#94a3b8;margin-top:6px;">Ao tocar em "Saiu para entrega", este aparelho passa a enviar a localização para o cliente acompanhar no link. Deixe a tela ligada durante o trajeto.</div></div>'
+  +'<table class="tbl" style="margin-bottom:12px;"><thead><tr><th></th><th>Item</th><th>Qtd</th><th>Unit.</th><th>Total</th></tr></thead><tbody>'+itH+'</tbody></table>'
+  +'<div style="background:#faf4e8;border:1px solid #e8d8b0;border-radius:10px;padding:12px;margin-bottom:12px;">'
+  +'<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800;"><span>Total</span><span>'+R$(p.total)+'</span></div>'
+  +'<div style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px;color:#166534;"><span>Recebido</span><span style="font-weight:700;">'+R$(pgT)+'</span></div>'
+  +'<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800;border-top:1px solid #e8d8b0;padding-top:8px;margin-top:6px;color:'+(sl>0?'#991b1b':'#166534')+'"><span>Saldo</span><span>'+R$(sl)+'</span></div>'
+  +(p.vencSaldo&&sl>0?'<div style="font-size:12px;color:#991b1b;margin-top:4px;">Vencimento do saldo: '+dBr(p.vencSaldo)+'</div>':'')+'</div>'
+  +((p.pagamentos||[]).length?'<div style="font-size:12px;font-weight:700;color:var(--br);margin-bottom:6px;">Pagamentos recebidos</div>'+(p.pagamentos||[]).map(function(pg){return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid #f0e8d4;"><span>'+dBr(pg.data)+' — '+E(pg.obs||pgtoNome(pg.forma)||'')+'</span><span style="font-weight:700;color:#166534;">'+R$(pg.valor)+'</span></div>';}).join(''):'')
+  +(p.obs?'<div style="margin-top:12px;font-size:12px;color:#9a8060;background:#f5f0e8;padding:10px;border-radius:8px;"><strong>Obs:</strong> '+E(p.obs)+'</div>':'')
+  +(p.aprov?'<div style="margin-top:12px;background:#ECFDF5;border:1px solid #86efac;border-radius:8px;padding:10px;font-size:12px;color:#166534;"><strong>✅ Aprovado por '+E(p.aprov.nome||'')+'</strong> em '+E(new Date(p.aprov.em).toLocaleString('pt-BR'))+(p.aprov.assinatura?'<br><img src="'+E(p.aprov.assinatura)+'" style="height:60px;background:#fff;border:1px solid #d1fae5;margin-top:6px;border-radius:6px;">':'')+'</div>':(p.aprovToken?'<div style="margin-top:12px;background:#FEF9C3;border:1px solid #fde68a;border-radius:8px;padding:10px;font-size:12px;color:#854d0e;">⏳ Enviado para assinatura do cliente — aguardando.</div>':''));
+  document.getElementById('mdf').innerHTML=
+  '<button class="btn bs" onclick="closeM(\'mdt-mo\')">Fechar</button>'
+  +'<button class="btn bgh" onclick="closeM(\'mdt-mo\');abrirPed(\''+p.id+'\')">✏️ Editar</button>'
+  +(sl>0&&st!=='cancelado'?'<button class="btn bk" onclick="closeM(\'mdt-mo\');abrirRec(\''+p.id+'\')">💰 Receber</button>':'')
+  +(sl>0&&st!=='cancelado'?'<button class="btn bs" onclick="cobrarPed(\''+p.id+'\')">💬 Cobrar</button>':'')
+  +(st!=='cancelado'?'<button class="btn bk" onclick="enviarPedWhats(\''+p.id+'\')">📲 Enviar no WhatsApp</button>':'')
+  +(hM&&st!=='devolvido'&&st!=='cancelado'?'<button class="btn bs" onclick="closeM(\'mdt-mo\');mkDev(\''+p.id+'\')">✅ Devolvido</button>':'')
+  +(st!=='cancelado'&&st!=='pago'?'<button class="btn bd" onclick="closeM(\'mdt-mo\');cancelPed(\''+p.id+'\')">🚫 Cancelar</button>':'')
+  +'<button class="btn bs" onclick="imprimirPed(\''+p.id+'\',\'simples\')">📄 Imprimir simples</button>'
+  +'<button class="btn bp" onclick="imprimirPed(\''+p.id+'\',\'termos\')">📑 Imprimir com termos</button>';
+  openM('mdt-mo');
+}
+/* --- ficha do cliente --- */
+function fichaCli(cid){
+  var c=DB.clientes.find(function(x){return x.id===cid;});if(!c){toast('Cliente não encontrado.','err');return;}
+  var peds=DB.pedidos.filter(function(p){return p.clienteId===cid;}).sort(function(a,b){return String(b.data||'').localeCompare(String(a.data||''));});
+  var ativos=peds.filter(function(p){return getStatus(p)!=='cancelado';});
+  var tot=ativos.reduce(function(s,p){return s+(p.total||0);},0),ab=ativos.reduce(function(s,p){return s+getSaldo(p);},0);
+  var d=_el('div','');
+  function lin(r,v){if(!v)return;var l=_el('div','display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid #F1F5F9;font-size:13px;');l.appendChild(_el('span','color:#64748B;',r));l.appendChild(_el('strong','color:#0F2044;text-align:right;word-break:break-word;',v));d.appendChild(l);}
+  lin('CPF / CNPJ',c.doc);lin('RG / IE',c.rg);lin('Telefone',c.tel);lin('E-mail',c.email);lin('Endereço',[c.end,c.bairro,c.cidade,c.cep?'CEP '+c.cep:''].filter(Boolean).join(' - '));lin('Observação',c.obs);
+  var k=_el('div','display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:12px 0;');
+  [['Pedidos',String(ativos.length),'#0F2044'],['Total comprado',R$(tot),'#065F46'],['Em aberto',R$(ab),ab>0?'#991B1B':'#065F46']].forEach(function(x){var b=_el('div','background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px;text-align:center;');b.appendChild(_el('div','font-size:10px;color:#64748B;text-transform:uppercase;font-weight:700;',x[0]));b.appendChild(_el('div','font-size:14px;font-weight:800;color:'+x[2]+';',x[1]));k.appendChild(b);});
+  d.appendChild(k);
+  d.appendChild(_el('div','font-size:12px;font-weight:800;color:#0F2044;margin-bottom:4px;','Histórico de pedidos'));
+  if(!peds.length)d.appendChild(_el('div','font-size:13px;color:#94A3B8;','Nenhum pedido ainda.'));
+  var api;
+  peds.slice(0,30).forEach(function(p){var s=getSaldo(p),stt=getStatus(p);var r=_el('div','display:flex;justify-content:space-between;gap:8px;padding:7px 4px;border-bottom:1px solid #F1F5F9;font-size:13px;cursor:pointer;');
+    r.appendChild(_el('span','color:#2563EB;','#'+p.num+' · '+dBr(p.entrega||p.data)+(stt==='cancelado'?' · cancelado':'')));r.appendChild(_el('strong','color:'+(s>0&&stt!=='cancelado'?'#991B1B':'#0F2044')+';',R$(p.total)+(s>0&&stt!=='cancelado'?' (falta '+R$(s)+')':'')));
+    r.onclick=function(){api.fechar();verPed(p.id);};d.appendChild(r);});
+  var bts=[{txt:'Fechar',cls:'bs',fn:function(a){a.fechar();}},{txt:'✏️ Editar',cls:'bs',fn:function(a){a.fechar();abrirCli(c.id);}},{txt:'+ Novo pedido',cls:'bs',fn:function(a){a.fechar();abrirPed();setTimeout(function(){var s=document.getElementById('ped-cli');if(s){s.value=c.id;}},50);}}];
+  if(c.tel)bts.push({txt:'💬 WhatsApp',cls:'bk',fn:function(){_abreWa(c.tel,'Olá '+(c.nome||'')+'! ');}});
+  if(ab>0)bts.push({txt:'💰 Cobrar saldo',cls:'bd',fn:function(){cobrarCliente(c.id);}});
+  api=dlg('👤 '+c.nome,d,bts);
+}
+/* --- cobrança por WhatsApp --- */
+function _msgCobranca(cli,peds){
+  var cfg=DB.config||{},tot=peds.reduce(function(s,p){return s+getSaldo(p);},0);
+  var lst=peds.map(function(p){return '• Pedido nº '+p.num+' ('+dBr(p.entrega||p.data)+'): '+R$(getSaldo(p))+(p.vencSaldo?' — vencimento '+dBr(p.vencSaldo):'');}).join('\n');
+  return 'Olá '+(cli.nome||'')+'! Tudo bem? 😊\n\nPassando para lembrar que consta em aberto o valor de *'+R$(tot)+'*:\n'+lst+'\n\n'+(cfg.pix?'Chave PIX para pagamento: *'+cfg.pix+'*\n':'')+'Se já pagou, por favor desconsidere e me envie o comprovante. Obrigado!\n— '+(cfg.empresa||'');
+}
+function cobrarPed(id){var p=DB.pedidos.find(function(x){return x.id===id;});if(!p)return;var c=DB.clientes.find(function(x){return x.id===p.clienteId;})||{};if(!c.tel){toast('Cliente sem telefone cadastrado.','err');return;}p.ultCobranca=new Date().toISOString();saveDB();_abreWa(c.tel,_msgCobranca(c,[p]));}
+function cobrarCliente(cid){var c=DB.clientes.find(function(x){return x.id===cid;});if(!c)return;if(!c.tel){toast('Cliente sem telefone cadastrado.','err');return;}
+  var ps=DB.pedidos.filter(function(p){return p.clienteId===cid&&getStatus(p)!=='cancelado'&&getSaldo(p)>0;});if(!ps.length){toast('Nada em aberto para este cliente.','ok');return;}
+  ps.forEach(function(p){p.ultCobranca=new Date().toISOString();});saveDB();_abreWa(c.tel,_msgCobranca(c,ps));}
+/* --- enviar pedido no WhatsApp (resumo ou com assinatura) --- */
+function _resumoPed(p){
+  var cfg=DB.config||{},c=DB.clientes.find(function(x){return x.id===p.clienteId;})||{},sl=getSaldo(p);
+  return '🍺 *'+(cfg.empresa||'ChoppMaster')+'* — Pedido nº '+p.num+'\n\nCliente: '+(c.nome||'')+'\n📍 Entrega: '+(p.local||'a combinar')+'\n📅 '+(p.entrega?dBr(p.entrega):'Data a combinar')+(p.horaEntrega?' às '+p.horaEntrega:'')+'\n\n'
+   +(p.itens||[]).map(function(i){return '• '+i.qty+'× '+_nomeItem(i)+' — '+R$((i.qty||0)*(i.preco||0));}).join('\n')
+   +'\n\n*Total: '+R$(p.total)+'*'+(sl>0&&sl<p.total?'\nSaldo a pagar: '+R$(sl):'')+'\nPagamento: '+pgtoNome(p.pgto)+(cfg.pix&&sl>0?'\nPIX: '+cfg.pix:'');
+}
+function enviarPedWhats(id){
+  var p=DB.pedidos.find(function(x){return x.id===id;});if(!p)return;var c=DB.clientes.find(function(x){return x.id===p.clienteId;})||{};
+  var d=_el('div','');d.appendChild(_el('p','margin:0 0 8px;font-size:13px;color:#475569;line-height:1.5;','Como você quer enviar o pedido nº '+p.num+' para '+(c.nome||'o cliente')+'?'));
+  d.appendChild(_el('p','margin:0 0 4px;font-size:12px;color:#64748B;line-height:1.5;','✍️ Com assinatura: o cliente abre o pedido no celular, lê os termos e assina com o dedo. A assinatura volta para o sistema e sai no pedido impresso.'));
+  d.appendChild(_el('p','margin:0;font-size:12px;color:#64748B;line-height:1.5;','📄 Só o resumo: manda o texto do pedido, sem assinatura.'));
+  var sel=_el('select','width:100%;padding:9px;border:1px solid #CBD5E1;border-radius:8px;font-size:14px;margin-top:10px;');[['termos','Assinatura com os termos de responsabilidade'],['simples','Assinatura sem os termos (pedido simples)']].forEach(function(o){var op=document.createElement('option');op.value=o[0];op.textContent=o[1];if((p.modelo||modeloPadrao())===o[0])op.selected=true;sel.appendChild(op);});d.appendChild(sel);
+  dlg('📲 Enviar pedido no WhatsApp',d,[{txt:'Cancelar',cls:'bs',fn:function(a){a.fechar();}},{txt:'📄 Só o resumo',cls:'bs',fn:function(a){a.fechar();if(!c.tel){toast('Cliente sem telefone cadastrado.','err');return;}_abreWa(c.tel,_resumoPed(p));}},{txt:'✍️ Com assinatura',cls:'bk',fn:function(a){a.fechar();p.modelo=sel.value;saveDB();closeM('mdt-mo');enviarAprovacao(p.id);}}]);
+}
+/* --- andamento da entrega + GPS --- */
+function setEntregaSt(id,st){
+  var p=DB.pedidos.find(function(x){return x.id===id;});if(!p)return;
+  p.entregaSt=st;p.entregaHist=(p.entregaHist||[]).concat([{st:st,em:new Date().toISOString()}]);
+  if(st==='entregue'){p.entregueEm=hj();if(_gps.ped===p.id)gpsParar();}
+  if(st==='recolhido'){p.retiradoEm=hj();if(!p.entregueEm)p.entregueEm=hj();}
+  if(st==='confirmado'||st==='saiu'){if(st==='confirmado'){p.entregueEm='';p.retiradoEm='';}}
+  saveDB();
+  webSyncPedido(p).catch(function(){});
+  if(st==='saiu')gpsIniciar(p.id);
+  toast('Entrega: '+entStNome(st),'ok');
+  verPed(p.id);try{renderPeds();}catch(e){}
+}
+var _gps={ped:null,watch:null,last:0,lock:null};
+function gpsIniciar(pid){
+  if(!navigator.geolocation){toast('Este aparelho não permite usar o GPS no navegador.','err');return;}
+  gpsParar();_gps.ped=pid;_gps.last=0;
+  try{if(navigator.wakeLock)navigator.wakeLock.request('screen').then(function(l){_gps.lock=l;}).catch(function(){});}catch(e){}
+  _gps.watch=navigator.geolocation.watchPosition(function(pos){
+    var now=Date.now();if(now-_gps.last<15000)return;_gps.last=now;
+    var p=DB.pedidos.find(function(x){return x.id===_gps.ped;});if(!p||!p.webId)return;
+    fsPatch(webColPath()+'/'+p.webId,fsFields({gps:{lat:pos.coords.latitude,lng:pos.coords.longitude,prec:Math.round(pos.coords.accuracy||0),em:new Date().toISOString()}}),['gps']).catch(function(){});
+    var b=document.getElementById('gps-info');if(b)b.textContent='Última posição enviada às '+new Date().toLocaleTimeString('pt-BR');
+  },function(err){toast(err&&err.code===1?'GPS bloqueado: libere a localização para este site nas configurações do navegador.':'Não foi possível obter a localização do GPS.','err');},{enableHighAccuracy:true,maximumAge:10000,timeout:30000});
+  var p=DB.pedidos.find(function(x){return x.id===pid;})||{};
+  var bar=_el('div','position:fixed;left:12px;right:12px;bottom:76px;z-index:99990;background:#065F46;color:#fff;border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 6px 20px rgba(0,0,0,.3);font-size:13px;');bar.id='gps-barra';
+  var t=_el('div','');t.appendChild(_el('div','font-weight:800;','📡 GPS ligado — entrega do pedido nº '+(p.num||'')));var inf=_el('div','font-size:11px;opacity:.85;','Aguardando a primeira posição...');inf.id='gps-info';t.appendChild(inf);bar.appendChild(t);
+  var bx=_el('button','background:#fff;color:#065F46;border:none;border-radius:8px;padding:8px 12px;font-weight:800;cursor:pointer;','Parar');bx.onclick=function(){gpsParar();toast('GPS desligado.','ok');};bar.appendChild(bx);
+  document.body.appendChild(bar);
+}
+function gpsParar(){
+  try{if(_gps.watch!==null&&navigator.geolocation)navigator.geolocation.clearWatch(_gps.watch);}catch(e){}
+  try{if(_gps.lock)_gps.lock.release();}catch(e){}
+  _gps.watch=null;_gps.ped=null;_gps.lock=null;var b=document.getElementById('gps-barra');if(b)b.remove();
+}
+
+/* ===== LINKS PARA O CLIENTE: pedido online, cadastro, acompanhamento (tudo pelo Firebase) ===== */
+var FORMAS_PGTO=[['pix','PIX'],['dinheiro','Dinheiro'],['cartao_debito','Cartão de débito'],['cartao_credito','Cartão de crédito'],['transferencia','Transferência'],['boleto','Boleto']];
+function webColPath(cod){return 'distribuidoras/dist_'+(cod||_distId)+'/web';}
+function catPath(cod){return 'distribuidoras/dist_'+(cod||_distId)+'/publico/catalogo';}
+function calcCfg(cfg){cfg=cfg||DB.config||{};var mg=parseFloat(cfg.calcMargem);return {lph:parseFloat(cfg.calcLph)||0.5,margem:isNaN(mg)?10:mg,horas:parseFloat(cfg.calcHoras)||5};}
+function formasCfg(cfg){cfg=cfg||DB.config||{};var f=Array.isArray(cfg.formasPgto)&&cfg.formasPgto.length?cfg.formasPgto:['pix','dinheiro','cartao_debito','cartao_credito'];return FORMAS_PGTO.filter(function(x){return f.indexOf(x[0])>=0;});}
+function litrosDe(x){var m=String((x.nome||'')+' '+(x.un||'')).match(/(\d+(?:[.,]\d+)?)\s*(l|lt|lts|litro|litros)\b/i);return m?parseFloat(m[1].replace(',','.')):(parseFloat(x.litros)||0);}
+function linkPedidoOnline(){return linkSistema()+'?pedir='+encodeURIComponent(_distId||'');}
+function linkCadCliente(){return linkSistema()+'?cliente='+encodeURIComponent(_distId||'');}
+function linkAcomp(webId,cod){return linkSistema()+'?acomp='+encodeURIComponent((cod||_distId)+'.'+webId);}
+/* --- catálogo público (o que o cliente vê no link de pedido) --- */
+var _catTimer=null;
+function catalogoDados(){
+  var cfg=DB.config||{},cc=calcCfg(cfg);
+  return {empresa:cfg.empresa||'ChoppMaster',tel:cfg.tel||'',cor:corPedido(cfg),slogan:cfg.slogan||'',logo:(cfg.logo&&cfg.logo.length<90000)?cfg.logo:'',pix:cfg.pix||'',
+    calcLph:cc.lph,calcMargem:cc.margem,calcHoras:cc.horas,formas:formasCfg(cfg).map(function(x){return x[0];}),atualizadoEm:new Date().toISOString(),
+    produtos:(DB.produtos||[]).filter(function(p){return p.ativo!==false&&p.nome;}).map(function(p){return {id:p.id,nome:p.nome,un:p.un||'',cat:p.cat||'',preco:parseFloat(p.precoVenda||p.pvv)||0,litros:litrosDe(p)};}),
+    maquinas:(DB.maquinas||[]).filter(function(m){return m.nome;}).map(function(m){return {id:m.id,nome:m.nome,preco:parseFloat(m.evento||m.diaria)||0};})};
+}
+function publicarCatalogo(){if(!_distId)return Promise.resolve(false);return fsPatch(catPath(),fsFields(catalogoDados())).then(function(){return true;}).catch(function(){return false;});}
+function agendarCatalogo(){if(!_distId||!_authUser)return;clearTimeout(_catTimer);_catTimer=setTimeout(publicarCatalogo,4000);}
+(function(){var _orig=saveDB;saveDB=function(){var r=_orig.apply(this,arguments);try{agendarCatalogo();}catch(e){}return r;};})();
+/* --- pedidos online e cadastros recebidos --- */
+var _web=[],_webErro='',_webUlt=0;
+function webPend(tipo){return (_web||[]).filter(function(w){return w.tipo===tipo&&(!w.status||w.status==='aguardando');});}
+function webSync(forcar){
+  if(!_distId||!_authUser)return Promise.resolve();
+  if(!forcar&&Date.now()-_webUlt<15000)return Promise.resolve();_webUlt=Date.now();
+  return fsGet(webColPath()+'?pageSize=300').then(function(r){_web=((r&&r.documents)||[]).map(regParse);_webErro='';webAtualizaTela();})
+    .catch(function(e){_webErro=String(e&&e.message||e);webAtualizaTela();});
+}
+setInterval(function(){try{if(_distId&&_authUser)webSync();}catch(e){}},60000);
+function webAtualizaTela(){
+  var b=document.getElementById('web-badge');var n=webPend('pedido').length;if(b){b.textContent=n;b.style.display=n?'':'none';}
+  var bc=document.getElementById('webcli-badge');var nc=webPend('cadastro').length;if(bc){bc.textContent=nc;bc.style.display=nc?'':'none';}
+  var pp=document.getElementById('pg-pedidos');if(pp&&pp.style.display!=='none')renderWebPed();
+  var pc=document.getElementById('pg-clientes');if(pc&&pc.style.display!=='none')renderWebCli();
+  var pk=document.getElementById('pg-calendario');if(pk&&pk.style.display!=='none'){try{renderCalendario();}catch(e){}}
+}
+function _avisoRegras(){return _el('div','background:#FEF3C7;border:1px solid #FCD34D;color:#92400E;border-radius:8px;padding:10px 12px;font-size:12px;margin-bottom:12px;line-height:1.5;','⚠️ Não consegui ler os pedidos online e cadastros enviados pelos clientes ('+_webErro+'). Peça ao gestor para atualizar as regras do Firebase.');}
+function renderWebPed(){
+  var pg=document.getElementById('pg-pedidos');if(!pg)return;var old=document.getElementById('web-area');if(old)old.remove();
+  var ps=webPend('pedido');if(!ps.length&&!_webErro)return;
+  var box=_el('div','margin-bottom:16px;');box.id='web-area';
+  if(_webErro){box.appendChild(_avisoRegras());pg.insertBefore(box,pg.firstChild);return;}
+  var card=_el('div','background:#fff;border:1px solid #93C5FD;border-left:5px solid #2563EB;border-radius:12px;padding:12px 14px;');
+  card.appendChild(_el('div','font-size:15px;font-weight:800;color:#1E3A8A;margin-bottom:8px;','🛒 Pedidos online aguardando confirmação ('+ps.length+')'));
+  ps.sort(function(a,b){return String(a.criadoEm||'').localeCompare(String(b.criadoEm||''));}).forEach(function(w){card.appendChild(webCardPedido(w));});
+  box.appendChild(card);pg.insertBefore(box,pg.firstChild);
+}
+function webCardPedido(w){
+  var c=_el('div','border:1px solid #E2E8F0;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#F8FAFC;');
+  var t=_el('div','display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;');t.appendChild(_el('strong','font-size:14px;color:#0F2044;',(w.nome||'Cliente')+' · '+(w.tel||'')));t.appendChild(_el('strong','font-size:14px;color:#065F46;',R$(w.total)));c.appendChild(t);
+  c.appendChild(_el('div','font-size:13px;color:#1E40AF;font-weight:700;margin-top:4px;','📅 '+dBr(w.entrega)+(w.hora?' às '+w.hora:'')+'  ·  📍 '+(w.local||'')));
+  c.appendChild(_el('div','font-size:12px;color:#334155;margin-top:3px;',(w.itens||[]).map(function(i){return i.qty+'× '+i.nome;}).join(', ')));
+  c.appendChild(_el('div','font-size:12px;color:#64748B;margin-top:2px;','💳 '+pgtoNome(w.pgto)+(w.pessoas?'  ·  🧮 '+w.pessoas+' pessoas, '+w.horas+' h':'')+(w.obs?'  ·  Obs.: '+w.obs:'')+'  ·  Enviado '+(w.criadoEm?new Date(w.criadoEm).toLocaleString('pt-BR'):'')));
+  var ac=_el('div','display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;');
+  var b1=_el('button','','✅ Confirmar e criar pedido');b1.className='btn bk bsm';b1.onclick=function(){webAprovarPedido(w);};ac.appendChild(b1);
+  var b2=_el('button','','💬 WhatsApp');b2.className='btn bs bsm';b2.onclick=function(){_abreWa(w.tel,'Olá '+(w.nome||'')+'! Recebemos o seu pedido online. ');};ac.appendChild(b2);
+  var b3=_el('button','','❌ Recusar');b3.className='btn bd bsm';b3.onclick=function(){webRecusar(w);};ac.appendChild(b3);
+  c.appendChild(ac);return c;
+}
+function _cliPorTel(tel){var d=String(tel||'').replace(/\D/g,'');if(d.length<8)return null;return (DB.clientes||[]).find(function(c){return String(c.tel||'').replace(/\D/g,'').slice(-9)===d.slice(-9);})||null;}
+function webAprovarPedido(w){
+  var cli=_cliPorTel(w.tel);
+  if(!cli){cli={id:uid(),nome:w.nome||'Cliente',tel:w.tel||'',doc:w.doc||'',email:w.email||'',end:w.local||'',obs:''};DB.clientes.push(cli);}
+  else{if(!cli.doc&&w.doc)cli.doc=w.doc;if(!cli.email&&w.email)cli.email=w.email;if(!cli.end&&w.local)cli.end=w.local;}
+  var itens=(w.itens||[]).map(function(i){var preco=parseFloat(i.preco)||0;if(i.tipo==='produto'){var pr=DB.produtos.find(function(x){return x.id===i.refId;});if(pr)preco=pr.precoVenda||pr.pvv||preco;}else{var mq=DB.maquinas.find(function(x){return x.id===i.refId;});if(mq)preco=mq.evento||mq.diaria||preco;}return {_id:uid(),tipo:i.tipo,refId:i.refId,qty:parseFloat(i.qty)||1,preco:preco};});
+  var sub=itens.reduce(function(s,i){return s+i.qty*i.preco;},0),agora=new Date().toISOString();
+  var num=String((DB.pedidos.length||0)+1).padStart(4,'0');
+  var obs=[w.obs,w.ref?'Referência: '+w.ref:'',w.pessoas?'Calculadora do cliente: '+w.pessoas+' pessoas, '+w.horas+' h':''].filter(Boolean).join(' | ');
+  var ped={id:uid(),num:num,clienteId:cli.id,data:hj(),entrega:w.entrega||'',horaEntrega:w.hora||'',devolucao:w.devolucao||'',local:w.local||'',pgto:w.pgto||'a_combinar',vencSaldo:'',obs:obs,itens:itens,subtotal:sub,desconto:0,total:sub,pagamentos:[],status:'pendente',origem:'online',webId:w.id,webOrigem:true,modelo:modeloPadrao(),
+    entregaSt:'confirmado',entregaHist:[{st:'aguardando',em:w.criadoEm||agora},{st:'confirmado',em:agora}]};
+  ped.status=getStatus(ped);DB.pedidos.unshift(ped);saveDB();
+  w.status='confirmado';
+  webSyncPedido(ped).catch(function(){});
+  try{renderPeds();renderWebPed();}catch(e){}
+  toast('Pedido #'+num+' criado a partir do pedido online!','ok');
+  var cfg=DB.config||{};
+  var d=_el('div','');d.appendChild(_el('p','margin:0 0 8px;font-size:13px;color:#334155;line-height:1.5;','Pedido nº '+num+' criado. Confira os preços e a data e, se precisar, edite. Quer avisar o cliente pelo WhatsApp que o pedido foi confirmado?'));
+  dlg('✅ Pedido confirmado',d,[{txt:'Agora não',cls:'bs',fn:function(a){a.fechar();verPed(ped.id);}},{txt:'💬 Avisar o cliente',cls:'bk',fn:function(a){a.fechar();_abreWa(w.tel,'Olá '+(w.nome||'')+'! ✅ Seu pedido foi *confirmado* pela '+(cfg.empresa||'')+'.\nPedido nº '+num+' — '+R$(sub)+'\n📅 '+dBr(ped.entrega)+(ped.horaEntrega?' às '+ped.horaEntrega:'')+'\n📍 '+ped.local+'\n\nAcompanhe a entrega por aqui:\n'+linkAcomp(w.id));verPed(ped.id);}}]);
+}
+function webRecusar(w){
+  var d=_el('div','');var mt=campoEl('Motivo (aparece para o cliente)','text','','Ex.: sem disponibilidade na data');d.appendChild(mt.wrap);
+  dlg('❌ Recusar pedido online',d,[{txt:'Cancelar',cls:'bs',fn:function(a){a.fechar();}},{txt:'Recusar',cls:'bd',fn:function(a){
+    var mot=sanitizeStr(mt.input.value,150);
+    fsPatch(webColPath()+'/'+w.id,fsFields({status:'recusado',motivo:mot,hist:(w.hist||[]).concat([{st:'recusado',em:new Date().toISOString()}])}),['status','motivo','hist'])
+      .then(function(){a.fechar();w.status='recusado';toast('Pedido online recusado.','ok');renderWebPed();if(confirm('Avisar o cliente pelo WhatsApp?'))_abreWa(w.tel,'Olá '+(w.nome||'')+'. Infelizmente não conseguimos atender o seu pedido'+(mot?' ('+mot+')':'')+'. Se quiser, podemos combinar outra data.');})
+      .catch(function(e){toast('Erro: '+e.message,'err');});
+  }}]);
+}
+function renderWebCli(){
+  var pg=document.getElementById('pg-clientes');if(!pg)return;var old=document.getElementById('webcli-area');if(old)old.remove();
+  var cs=webPend('cadastro');if(!cs.length&&!_webErro)return;
+  var box=_el('div','margin-bottom:16px;');box.id='webcli-area';
+  if(_webErro){box.appendChild(_avisoRegras());pg.insertBefore(box,pg.firstChild);return;}
+  var card=_el('div','background:#fff;border:1px solid #93C5FD;border-left:5px solid #2563EB;border-radius:12px;padding:12px 14px;');
+  card.appendChild(_el('div','font-size:15px;font-weight:800;color:#1E3A8A;margin-bottom:8px;','📝 Cadastros enviados por clientes ('+cs.length+')'));
+  cs.forEach(function(w){
+    var c=_el('div','border:1px solid #E2E8F0;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#F8FAFC;');
+    c.appendChild(_el('strong','font-size:14px;color:#0F2044;',w.nome||''));
+    c.appendChild(_el('div','font-size:12px;color:#475569;margin-top:3px;line-height:1.6;',[w.doc?'CPF/CNPJ '+w.doc:'',w.rg?'RG '+w.rg:'',w.tel,w.email,[w.end,w.bairro,w.cidade,w.cep?'CEP '+w.cep:''].filter(Boolean).join(' - '),w.obs?'Obs.: '+w.obs:''].filter(Boolean).join('  ·  ')));
+    var ac=_el('div','display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;');
+    var b1=_el('button','','✅ Salvar cliente');b1.className='btn bk bsm';b1.onclick=function(){webAprovarCad(w);};ac.appendChild(b1);
+    var b2=_el('button','','🗑 Descartar');b2.className='btn bd bsm';b2.onclick=function(){if(!confirm('Descartar este cadastro?'))return;fsDelete(webColPath()+'/'+w.id).then(function(){_web=_web.filter(function(x){return x.id!==w.id;});renderWebCli();webAtualizaTela();});};ac.appendChild(b2);
+    c.appendChild(ac);card.appendChild(c);
+  });
+  box.appendChild(card);pg.insertBefore(box,pg.firstChild);
+}
+function webAprovarCad(w){
+  var cli=_cliPorTel(w.tel),novo=!cli;if(!cli){cli={id:uid(),obs:''};DB.clientes.push(cli);}
+  ['nome','doc','rg','tel','email','end','bairro','cidade','cep'].forEach(function(k){if(w[k])cli[k]=w[k];});if(w.obs)cli.obs=[cli.obs,w.obs].filter(Boolean).join(' | ');
+  saveDB();fsDelete(webColPath()+'/'+w.id).catch(function(){});_web=_web.filter(function(x){return x.id!==w.id;});
+  try{renderClis();renderWebCli();webAtualizaTela();}catch(e){}toast(novo?'Cliente cadastrado!':'Cadastro do cliente atualizado!','ok');
+}
+/* --- espelho do pedido para o link de acompanhamento --- */
+function webSyncPedido(p){
+  if(!_distId)return Promise.resolve(null);
+  if(!p.webId){p.webId=reciboToken();saveDB();}
+  var cfg=DB.config||{},cli=DB.clientes.find(function(x){return x.id===p.clienteId;})||{};
+  var snap={empresa:cfg.empresa||'ChoppMaster',tel:cfg.tel||'',cor:corPedido(cfg),num:p.num||'',cliente:cli.nome||'',local:p.local||'',entrega:p.entrega||'',hora:p.horaEntrega||'',devolucao:p.devolucao||'',
+    pgto:pgtoNome(p.pgto),total:p.total||0,saldo:getSaldo(p),maquinas:(p.itens||[]).some(function(i){return i.tipo==='maquina';}),
+    itens:(p.itens||[]).map(function(i){return {n:_nomeItem(i),q:i.qty,t:(i.qty||0)*(i.preco||0)};})};
+  var o={status:entStAtual(p),hist:p.entregaHist||[],snap:JSON.stringify(snap),pedidoId:p.id,pedNum:p.num||'',atualizadoEm:new Date().toISOString()};
+  if(!p.webOrigem){o.tipo='rastreio';o.nome=cli.nome||'';o.tel=cli.tel||'';}
+  if(entStAtual(p)!=='saiu')o.gps=null;
+  return fsPatch(webColPath()+'/'+p.webId,fsFields(o),Object.keys(o));
+}
+function abrirAcompanhamento(id){
+  var p=DB.pedidos.find(function(x){return x.id===id;});if(!p)return;var c=DB.clientes.find(function(x){return x.id===p.clienteId;})||{};
+  if(!p.entregaSt){p.entregaSt=entStAtual(p);p.entregaHist=[{st:p.entregaSt,em:new Date().toISOString()}];}
+  toast('Gerando link...','ok');
+  webSyncPedido(p).then(function(){
+    var lk=linkAcomp(p.webId),cfg=DB.config||{};
+    var msg='Olá '+(c.nome||'')+'! 👋\nAcompanhe o andamento do seu pedido nº '+p.num+' da '+(cfg.empresa||'')+' por este link (mostra quando sai para entrega e onde está o entregador):\n'+lk;
+    var d=_el('div','');d.appendChild(_el('p','margin:0 0 8px;font-size:13px;color:#475569;line-height:1.5;','O cliente vê o andamento (aguardando, confirmado, saiu para entrega, entregue) e, durante o trajeto, a localização do entregador no mapa.'));
+    d.appendChild(_el('pre','background:#F1F5F9;border-radius:8px;padding:10px;font-size:12px;white-space:pre-wrap;word-break:break-all;margin:0;font-family:inherit;',lk));
+    dlg('📍 Link de acompanhamento',d,[{txt:'📋 Copiar',cls:'bs',fn:function(){copiar(lk);}},{txt:'💬 Enviar no WhatsApp',cls:'bk',fn:function(){_abreWa(c.tel,msg);}},{txt:'Fechar',cls:'bp',fn:function(a){a.fechar();}}]);
+  }).catch(function(e){toast('Não foi possível criar o link ('+e.message+'). Verifique a internet.','err');});
+}
+/* --- enviar links (pedido online / cadastro) --- */
+function abrirLinkCliente(tipo){
+  if(!_distId){toast('Disponível dentro da distribuidora.','err');return;}
+  var cfg=DB.config||{},ped=tipo==='pedido',lk=ped?linkPedidoOnline():linkCadCliente();
+  publicarCatalogo();
+  var d=_el('div','');
+  d.appendChild(_el('p','margin:0 0 8px;font-size:13px;color:#475569;line-height:1.5;',ped?'O cliente escolhe os produtos, calcula a quantidade de chopp pela quantidade de pessoas, informa o local, a data, o horário e a forma de pagamento. O pedido chega aqui em Pedidos para você confirmar.':'O cliente preenche os próprios dados (nome, CPF/CNPJ, telefone, endereço). O cadastro chega aqui em Clientes para você salvar.'));
+  d.appendChild(_el('pre','background:#F1F5F9;border-radius:8px;padding:10px;font-size:12px;white-space:pre-wrap;word-break:break-all;margin:0 0 10px;font-family:inherit;',lk));
+  var sel=_el('select','width:100%;padding:9px;border:1px solid #CBD5E1;border-radius:8px;font-size:14px;margin-bottom:8px;');
+  var o0=document.createElement('option');o0.value='';o0.textContent='Enviar para: escolher o contato no WhatsApp';sel.appendChild(o0);
+  (DB.clientes||[]).filter(function(c){return c.tel;}).sort(function(a,b){return String(a.nome).localeCompare(String(b.nome));}).forEach(function(c){var o=document.createElement('option');o.value=c.tel;o.textContent=c.nome+' — '+c.tel;sel.appendChild(o);});
+  d.appendChild(sel);var tl=campoEl('Ou digite o WhatsApp do cliente','tel','','(62) 99999-0000');d.appendChild(tl.wrap);
+  var msg=ped?'Olá! 👋 Faça o seu pedido de chopp da '+(cfg.empresa||'')+' por este link. Lá você escolhe os produtos, calcula quantos litros precisa e informa o local e o horário da entrega:\n'+lk
+    :'Olá! 👋 Para agilizar o seu atendimento na '+(cfg.empresa||'')+', preencha o seu cadastro neste link:\n'+lk;
+  dlg(ped?'🛒 Link de pedido online':'📨 Link de cadastro do cliente',d,[{txt:'📋 Copiar',cls:'bs',fn:function(){copiar(lk);}},{txt:'💬 Enviar no WhatsApp',cls:'bk',fn:function(){_abreWa(tl.input.value||sel.value,msg);}},{txt:'Fechar',cls:'bp',fn:function(a){a.fechar();}}]);
+}
+/* ===== PÁGINAS PÚBLICAS ===== */
+function _pubShell(){
+  ['mn','sb','bottom-nav','login-screen','ativacao-screen','portal-screen','sol-screen','tb'].forEach(function(i){var e=document.getElementById(i);if(e)e.style.display='none';});
+  var root=_el('div','position:fixed;inset:0;z-index:99999;background:#F1F5F9;overflow-y:auto;font-family:Inter,Arial,sans-serif;-webkit-overflow-scrolling:touch;');document.body.appendChild(root);
+  var wrap=_el('div','max-width:560px;margin:0 auto;padding:14px 14px 120px;');root.appendChild(wrap);return {root:root,wrap:wrap};
+}
+function _pubTopo(wrap,cat){
+  var cor=cat.cor||'#2563EB';var h=_el('div','background:'+cor+';color:#fff;border-radius:16px;padding:16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;');
+  if(cat.logo){var im=document.createElement('img');im.src=cat.logo;im.style.cssText='height:48px;max-width:96px;background:#fff;border-radius:8px;padding:3px;object-fit:contain;';h.appendChild(im);}
+  var t=_el('div','');t.appendChild(_el('div','font-size:19px;font-weight:800;',cat.empresa||'ChoppMaster'));if(cat.slogan)t.appendChild(_el('div','font-size:12px;opacity:.9;',cat.slogan));h.appendChild(t);wrap.appendChild(h);
+}
+function _pubCard(wrap,tit){var c=_el('div','background:#fff;border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(15,32,68,.08);');if(tit)c.appendChild(_el('div','font-size:15px;font-weight:800;color:#0F2044;margin-bottom:10px;',tit));wrap.appendChild(c);return c;}
+function _pubMsg(wrap,ic,tit,txt,cor){wrap.innerHTML='';var c=_pubCard(wrap);c.style.textAlign='center';c.style.marginTop='40px';c.appendChild(_el('div','font-size:46px;',ic));c.appendChild(_el('div','font-size:18px;font-weight:800;margin:6px 0;color:'+(cor||'#0F2044')+';',tit));c.appendChild(_el('div','font-size:14px;color:#475569;line-height:1.6;',txt));return c;}
+function _hojeLocal(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+/* --- página: fazer pedido (?pedir=COD) --- */
+function checkPedirMode(){
+  var q=new URLSearchParams((window.location&&window.location.search)||'');var cod=normCodigo(q.get('pedir')||'');if(!q.has('pedir'))return false;
+  var sh=_pubShell(),wrap=sh.wrap;_pubMsg(wrap,'⏳','Carregando...','');
+  fsGet(catPath(cod)).then(function(d){if(!d||!d.fields)throw new Error('nf');pubPedido(wrap,cod,regParse(d));})
+    .catch(function(){_pubMsg(wrap,'⚠️','Link indisponível','Não encontramos o cardápio desta distribuidora. Peça um novo link a quem te enviou.','#991B1B');});
+  return true;
+}
+function pubPedido(wrap,cod,cat){
+  wrap.innerHTML='';_pubTopo(wrap,cat);
+  var qtd={},cc={lph:parseFloat(cat.calcLph)||0.5,margem:isNaN(parseFloat(cat.calcMargem))?10:parseFloat(cat.calcMargem),horas:parseFloat(cat.calcHoras)||5},calcInfo=null;
+  var prods=(cat.produtos||[]),maqs=(cat.maquinas||[]);
+  var tabs=_el('div','display:flex;gap:6px;margin-bottom:12px;');wrap.appendChild(tabs);
+  var abaP=_el('div',''),abaC=_el('div','display:none;');wrap.appendChild(abaC);wrap.appendChild(abaP);
+  function tab(t,el){var b=_el('button','flex:1;padding:11px;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;border:2px solid #CBD5E1;background:#fff;color:#334155;',t);b.onclick=function(){abaP.style.display=el===abaP?'':'none';abaC.style.display=el===abaC?'':'none';Array.prototype.forEach.call(tabs.children,function(x){x.style.background='#fff';x.style.color='#334155';x.style.borderColor='#CBD5E1';});b.style.background='#0F2044';b.style.color='#fff';b.style.borderColor='#0F2044';};tabs.appendChild(b);return b;}
+  var tP=tab('🛒 Fazer pedido',abaP),tC=tab('🧮 Quanto chopp?',abaC);tP.onclick();
+  /* produtos */
+  var totEl;
+  function linhaItem(card,x,tipo){
+    var k=tipo+'|'+x.id;qtd[k]=qtd[k]||0;
+    var r=_el('div','display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #F1F5F9;');
+    var a=_el('div','min-width:0;');a.appendChild(_el('div','font-size:14px;font-weight:700;color:#0F2044;',x.nome));a.appendChild(_el('div','font-size:12px;color:#64748B;',(x.preco?R$(x.preco):'Preço a combinar')+(tipo==='maquina'?' por evento (aluguel)':(x.un?' / '+x.un:''))));r.appendChild(a);
+    var st=_el('div','display:flex;align-items:center;gap:6px;flex-shrink:0;');
+    var bm=_el('button','width:36px;height:36px;border-radius:10px;border:1px solid #CBD5E1;background:#fff;font-size:20px;cursor:pointer;','−');var v=_el('div','min-width:28px;text-align:center;font-weight:800;font-size:16px;',String(qtd[k]));var bp=_el('button','width:36px;height:36px;border-radius:10px;border:none;background:#2563EB;color:#fff;font-size:20px;cursor:pointer;','+');
+    function upd(n){qtd[k]=Math.max(0,n);v.textContent=String(qtd[k]);calcTotal();}
+    bm.onclick=function(){upd(qtd[k]-1);};bp.onclick=function(){upd(qtd[k]+1);};x._upd=upd;
+    st.appendChild(bm);st.appendChild(v);st.appendChild(bp);r.appendChild(st);card.appendChild(r);
+  }
+  if(prods.length){var cp=_pubCard(abaP,'🍺 Produtos');prods.forEach(function(x){linhaItem(cp,x,'produto');});}
+  if(maqs.length){var cm=_pubCard(abaP,'🔧 Aluguel de chopeira');maqs.forEach(function(x){linhaItem(cm,x,'maquina');});}
+  if(!prods.length&&!maqs.length)_pubCard(abaP).appendChild(_el('div','font-size:14px;color:#64748B;','Os produtos ainda não foram cadastrados. Escreva o que deseja em "Observação".'));
+  function campo(card,rot,tipo,ph,obr){var w=_el('div','margin-bottom:10px;');w.appendChild(_el('label','display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:4px;',rot+(obr?' *':'')));var i=_el(tipo==='textarea'?'textarea':'input','width:100%;box-sizing:border-box;padding:11px;border:1px solid #CBD5E1;border-radius:10px;font-size:15px;background:#fff;'+(tipo==='textarea'?'min-height:64px;':''));if(tipo!=='textarea')i.type=tipo;if(ph)i.placeholder=ph;w.appendChild(i);card.appendChild(w);return i;}
+  var ce=_pubCard(abaP,'📍 Entrega');
+  var iLocal=campo(ce,'Endereço da entrega (rua, número, bairro, cidade)','text','Ex.: Rua 10, nº 25, Setor Central, Trindade',true);
+  var iRef=campo(ce,'Ponto de referência','text','Ex.: portão azul, ao lado da padaria');
+  var g=_el('div','display:grid;grid-template-columns:1fr 1fr;gap:8px;');ce.appendChild(g);
+  var iData=campo(g,'Data da entrega','date','',true);iData.min=_hojeLocal();var iHora=campo(g,'Horário sugerido','time','',true);
+  var wDev=_el('div','display:none;');ce.appendChild(wDev);var iDev=campo(wDev,'Data para recolher a chopeira','date','');iDev.min=_hojeLocal();
+  var cpg=_pubCard(abaP,'💳 Forma de pagamento');var sPg=_el('select','width:100%;padding:11px;border:1px solid #CBD5E1;border-radius:10px;font-size:15px;background:#fff;');
+  var fl=FORMAS_PGTO.filter(function(x){return (cat.formas||['pix','dinheiro','cartao_debito','cartao_credito']).indexOf(x[0])>=0;});var o0=document.createElement('option');o0.value='';o0.textContent='Escolha...';sPg.appendChild(o0);
+  fl.forEach(function(x){var o=document.createElement('option');o.value=x[0];o.textContent=x[1];sPg.appendChild(o);});cpg.appendChild(sPg);
+  if(cat.pix)cpg.appendChild(_el('div','font-size:12px;color:#065F46;margin-top:6px;','Chave PIX: '+cat.pix));
+  var cd=_pubCard(abaP,'👤 Seus dados');
+  var iNome=campo(cd,'Nome completo','text','',true),iTel=campo(cd,'WhatsApp com DDD','tel','(62) 99999-0000',true),iDoc=campo(cd,'CPF ou CNPJ','text','Opcional'),iObs=campo(cd,'Observação','textarea','Ex.: festa de aniversário, precisa de copos, etc.');
+  iTel.addEventListener('input',function(){maskPortalTel(iTel);});
+  var hp=_el('input','position:absolute;left:-9999px;opacity:0;');hp.tabIndex=-1;hp.autocomplete='off';abaP.appendChild(hp);
+  var msg=_el('div','color:#991B1B;font-size:14px;font-weight:700;margin:8px 0;display:none;');abaP.appendChild(msg);
+  /* barra fixa com total */
+  var bar=_el('div','position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #E2E8F0;padding:10px 14px;z-index:100000;box-shadow:0 -4px 14px rgba(0,0,0,.08);');
+  var bi=_el('div','max-width:560px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;');bar.appendChild(bi);
+  var tb=_el('div','');tb.appendChild(_el('div','font-size:11px;color:#64748B;','Total estimado'));totEl=_el('div','font-size:20px;font-weight:900;color:#0F2044;','R$ 0,00');tb.appendChild(totEl);bi.appendChild(tb);
+  var bEnv=_el('button','padding:13px 20px;border:none;border-radius:12px;background:#16A34A;color:#fff;font-weight:800;font-size:15px;cursor:pointer;','Enviar pedido');bi.appendChild(bEnv);document.body.appendChild(bar);
+  function itensSel(){var r=[];prods.forEach(function(x){var n=qtd['produto|'+x.id]||0;if(n>0)r.push({tipo:'produto',refId:x.id,nome:x.nome,qty:n,preco:x.preco||0});});maqs.forEach(function(x){var n=qtd['maquina|'+x.id]||0;if(n>0)r.push({tipo:'maquina',refId:x.id,nome:x.nome,qty:n,preco:x.preco||0});});return r;}
+  function calcTotal(){var it=itensSel();totEl.textContent=R$(it.reduce(function(s,i){return s+i.qty*i.preco;},0));wDev.style.display=it.some(function(i){return i.tipo==='maquina';})?'':'none';}
+  /* calculadora */
+  var cc1=_pubCard(abaC,'🧮 Calcule quanto chopp pedir');
+  cc1.appendChild(_el('div','font-size:13px;color:#475569;line-height:1.5;margin-bottom:10px;','Informe quantas pessoas vão beber chopp e quanto tempo dura a festa. A conta usa '+String(cc.lph).replace('.',',')+' litro por pessoa a cada hora'+(cc.margem?', com '+cc.margem+'% de folga':'')+'.'));
+  var g2=_el('div','display:grid;grid-template-columns:1fr 1fr;gap:8px;');cc1.appendChild(g2);
+  var iPes=campo(g2,'Pessoas que bebem','number','Ex.: 40',true),iHor=campo(g2,'Duração da festa (horas)','number','',true);iPes.min='1';iHor.min='1';iHor.value=String(cc.horas);
+  var res=_el('div','');cc1.appendChild(res);
+  function calcular(){
+    res.innerHTML='';var pe=parseFloat(iPes.value)||0,ho=parseFloat(iHor.value)||0;if(pe<=0||ho<=0)return;
+    var lt=Math.ceil(pe*ho*cc.lph*(1+cc.margem/100)-1e-9);calcInfo={pessoas:pe,horas:ho,litros:lt};
+    var b=_el('div','background:#EFF6FF;border:2px solid #2563EB;border-radius:12px;padding:12px;text-align:center;margin:6px 0 10px;');
+    b.appendChild(_el('div','font-size:12px;color:#1E40AF;font-weight:700;','Você vai precisar de aproximadamente'));b.appendChild(_el('div','font-size:30px;font-weight:900;color:#0F2044;',lt+' litros'));
+    b.appendChild(_el('div','font-size:12px;color:#475569;','≈ '+(Math.round(lt/pe*10)/10).toString().replace('.',',')+' L por pessoa durante a festa'));res.appendChild(b);
+    var bar2=prods.filter(function(x){return x.litros>0;});
+    if(!bar2.length){res.appendChild(_el('div','font-size:13px;color:#64748B;','Escolha os produtos na aba "Fazer pedido" somando cerca de '+lt+' litros.'));return;}
+    res.appendChild(_el('div','font-size:13px;font-weight:800;color:#0F2044;margin-bottom:6px;','Sugestões:'));
+    bar2.forEach(function(x){var n=Math.ceil(lt/x.litros);var r=_el('div','display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #F1F5F9;');
+      var a=_el('div','');a.appendChild(_el('div','font-size:14px;font-weight:700;color:#0F2044;',n+'× '+x.nome));a.appendChild(_el('div','font-size:12px;color:#64748B;',(n*x.litros)+' litros'+(x.preco?' · '+R$(n*x.preco):'')));r.appendChild(a);
+      var bu=_el('button','padding:9px 12px;border:none;border-radius:10px;background:#2563EB;color:#fff;font-weight:800;cursor:pointer;flex-shrink:0;','Usar no pedido');bu.onclick=function(){if(x._upd)x._upd(n);tP.onclick();window.scrollTo(0,0);sh_scrollTop();};r.appendChild(bu);res.appendChild(r);});
+  }
+  function sh_scrollTop(){try{wrap.parentNode.scrollTop=0;}catch(e){}}
+  iPes.oninput=calcular;iHor.oninput=calcular;
+  bEnv.onclick=function(){
+    msg.style.display='none';function erro(t){msg.textContent=t;msg.style.display='block';tP.onclick();msg.scrollIntoView({behavior:'smooth',block:'center'});}
+    var it=itensSel(),nome=sanitizeStr(iNome.value.trim(),80),tel=sanitizeStr(iTel.value.trim(),20);
+    if(!it.length&&!iObs.value.trim())return erro('Escolha pelo menos um produto.');
+    if(iLocal.value.trim().length<6)return erro('Informe o endereço da entrega.');
+    if(!iData.value)return erro('Informe a data da entrega.');if(iData.value<_hojeLocal())return erro('A data da entrega já passou.');
+    if(!iHora.value)return erro('Informe o horário sugerido para a entrega.');
+    if(!sPg.value)return erro('Escolha a forma de pagamento.');
+    if(nome.length<3)return erro('Informe o seu nome.');if(tel.replace(/\D/g,'').length<10)return erro('Informe o seu WhatsApp com DDD.');
+    if(hp.value)return;
+    var id=reciboToken(),agora=new Date().toISOString(),tot=it.reduce(function(s,i){return s+i.qty*i.preco;},0);
+    var o={tipo:'pedido',status:'aguardando',criadoEm:agora,nome:nome,tel:tel,doc:sanitizeStr(iDoc.value.trim(),20),local:sanitizeStr(iLocal.value.trim(),160),ref:sanitizeStr(iRef.value.trim(),120),entrega:iData.value,hora:iHora.value,devolucao:iDev.value||'',pgto:sPg.value,obs:sanitizeStr(iObs.value.trim(),300),itens:it,total:tot,hist:[{st:'aguardando',em:agora}],
+      snap:JSON.stringify({empresa:cat.empresa,tel:cat.tel,cor:cat.cor,num:'',cliente:nome,local:iLocal.value.trim(),entrega:iData.value,hora:iHora.value,devolucao:iDev.value||'',pgto:pgtoNome(sPg.value),total:tot,saldo:tot,maquinas:it.some(function(i){return i.tipo==='maquina';}),itens:it.map(function(i){return {n:i.nome,q:i.qty,t:i.qty*i.preco};})})};
+    if(calcInfo){o.pessoas=calcInfo.pessoas;o.horas=calcInfo.horas;}
+    bEnv.disabled=true;bEnv.textContent='Enviando...';
+    fsPatch(webColPath(cod)+'/'+id,fsFields(o)).then(function(){
+      bar.remove();var lk=linkAcomp(id,cod);try{var ls=JSON.parse(localStorage.getItem('cm_meus_pedidos')||'[]');ls.unshift({lk:lk,em:agora,empresa:cat.empresa});localStorage.setItem('cm_meus_pedidos',JSON.stringify(ls.slice(0,20)));}catch(e){}
+      var c=_pubMsg(wrap,'✅','Pedido enviado!','A '+(cat.empresa||'distribuidora')+' vai conferir e confirmar o seu pedido. Guarde o link abaixo para acompanhar a entrega.');
+      var b1=_el('a','display:block;margin-top:14px;padding:13px;border-radius:12px;background:#2563EB;color:#fff;font-weight:800;text-decoration:none;','📍 Acompanhar meu pedido');b1.href=lk;c.appendChild(b1);
+      if(cat.tel){var b2=_el('a','display:block;margin-top:8px;padding:13px;border-radius:12px;background:#25D366;color:#fff;font-weight:800;text-decoration:none;','💬 Avisar no WhatsApp');b2.href=_waLink(cat.tel,'Olá! Acabei de fazer um pedido pelo link: '+nome+' — entrega em '+dBr(iData.value)+' às '+iHora.value+'. Total estimado '+R$(tot)+'.\nAcompanhamento: '+lk);b2.target='_blank';c.appendChild(b2);}
+    }).catch(function(){bEnv.disabled=false;bEnv.textContent='Enviar pedido';erro('Não foi possível enviar agora. Verifique a internet e tente de novo.');});
+  };
+  calcTotal();
+}
+/* --- página: cadastro do cliente (?cliente=COD) --- */
+function checkCliCadMode(){
+  var q=new URLSearchParams((window.location&&window.location.search)||'');if(!q.has('cliente'))return false;var cod=normCodigo(q.get('cliente')||'');
+  var sh=_pubShell(),wrap=sh.wrap;_pubMsg(wrap,'⏳','Carregando...','');
+  fsGet(catPath(cod)).then(function(d){var cat=d&&d.fields?regParse(d):{empresa:'ChoppMaster'};pubCadastro(wrap,cod,cat);}).catch(function(){pubCadastro(wrap,cod,{empresa:'ChoppMaster'});});
+  return true;
+}
+function pubCadastro(wrap,cod,cat){
+  wrap.innerHTML='';_pubTopo(wrap,cat);var c=_pubCard(wrap,'📝 Seu cadastro');
+  c.appendChild(_el('div','font-size:13px;color:#475569;margin-bottom:10px;line-height:1.5;','Preencha seus dados para agilizar os seus pedidos e a emissão do pedido/contrato.'));
+  function campo(rot,tipo,ph,obr){var w=_el('div','margin-bottom:10px;');w.appendChild(_el('label','display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:4px;',rot+(obr?' *':'')));var i=_el('input','width:100%;box-sizing:border-box;padding:11px;border:1px solid #CBD5E1;border-radius:10px;font-size:15px;');i.type=tipo;if(ph)i.placeholder=ph;w.appendChild(i);c.appendChild(w);return i;}
+  var f={nome:campo('Nome completo ou razão social','text','',true),doc:campo('CPF ou CNPJ','text','Somente números',true),rg:campo('RG ou Inscrição Estadual','text',''),tel:campo('WhatsApp com DDD','tel','(62) 99999-0000',true),email:campo('E-mail','email',''),cep:campo('CEP','text',''),end:campo('Endereço (rua e número)','text','',true),bairro:campo('Bairro','text',''),cidade:campo('Cidade / UF','text','Ex.: Trindade / GO',true),obs:campo('Observação','text','')};
+  f.tel.addEventListener('input',function(){maskPortalTel(f.tel);});f.doc.inputMode='numeric';f.cep.inputMode='numeric';
+  var hp=_el('input','position:absolute;left:-9999px;opacity:0;');hp.tabIndex=-1;c.appendChild(hp);
+  var m=_el('div','color:#991B1B;font-size:14px;font-weight:700;margin:6px 0;display:none;');c.appendChild(m);
+  var bt=_el('button','width:100%;padding:14px;border:none;border-radius:12px;background:#16A34A;color:#fff;font-weight:800;font-size:15px;cursor:pointer;','Enviar cadastro');c.appendChild(bt);var t0=Date.now();
+  bt.onclick=function(){
+    function erro(t){m.textContent=t;m.style.display='block';}
+    var o={tipo:'cadastro',status:'aguardando',criadoEm:new Date().toISOString()};Object.keys(f).forEach(function(k){o[k]=sanitizeStr(f[k].value.trim(),k==='obs'?200:120);});
+    var dg=o.doc.replace(/\D/g,'');
+    if(o.nome.length<3)return erro('Informe o seu nome.');if(dg.length!==11&&dg.length!==14)return erro('Informe um CPF (11 números) ou CNPJ (14 números).');
+    if(o.tel.replace(/\D/g,'').length<10)return erro('Informe o WhatsApp com DDD.');if(o.email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(o.email))return erro('O e-mail parece incorreto.');
+    if(o.end.length<4)return erro('Informe o endereço.');if(o.cidade.length<3)return erro('Informe a cidade.');
+    if(hp.value||Date.now()-t0<2500){_pubMsg(wrap,'✅','Cadastro enviado!','Obrigado.');return;}
+    bt.disabled=true;bt.textContent='Enviando...';
+    fsPatch(webColPath(cod)+'/'+reciboToken(),fsFields(o)).then(function(){_pubMsg(wrap,'✅','Cadastro enviado!','Obrigado, '+o.nome+'! A '+(cat.empresa||'distribuidora')+' recebeu os seus dados.');})
+      .catch(function(){bt.disabled=false;bt.textContent='Enviar cadastro';erro('Não foi possível enviar agora. Verifique a internet e tente de novo.');});
+  };
+}
+/* --- página: acompanhar pedido (?acomp=COD.ID) --- */
+function checkAcompMode(){
+  var q=new URLSearchParams((window.location&&window.location.search)||'');if(!q.has('acomp'))return false;
+  var v=String(q.get('acomp')||''),i=v.lastIndexOf('.'),cod=normCodigo(v.slice(0,i)),id=v.slice(i+1).replace(/[^a-zA-Z0-9]/g,'');
+  var sh=_pubShell(),wrap=sh.wrap;_pubMsg(wrap,'⏳','Carregando...','');
+  var ultimo='';
+  function carregar(){
+    fsGet(webColPath(cod)+'/'+id).then(function(d){if(!d||!d.fields)throw new Error('nf');var w=regParse(d);var k=JSON.stringify([w.status,w.gps,w.atualizadoEm,w.snap]);if(k!==ultimo){ultimo=k;pubAcomp(wrap,w);}})
+      .catch(function(){if(!ultimo)_pubMsg(wrap,'⚠️','Pedido não encontrado','Confira o link recebido ou fale com a distribuidora.','#991B1B');});
+  }
+  carregar();setInterval(carregar,15000);return true;
+}
+function pubAcomp(wrap,w){
+  var s={};try{s=JSON.parse(w.snap||'{}');}catch(e){}
+  wrap.innerHTML='';_pubTopo(wrap,{empresa:s.empresa,cor:s.cor});
+  var st=w.status||'aguardando';
+  if(st==='recusado'){var c0=_pubCard(wrap);c0.appendChild(_el('div','font-size:17px;font-weight:800;color:#991B1B;','❌ Pedido não confirmado'));c0.appendChild(_el('div','font-size:14px;color:#475569;margin-top:4px;line-height:1.5;',(w.motivo?'Motivo: '+w.motivo+'. ':'')+'Fale com a distribuidora para combinar outra opção.'));}
+  else{
+    var passos=[['aguardando','📝','Pedido recebido','Aguardando a confirmação da distribuidora'],['confirmado','✅','Pedido confirmado','Seu pedido está sendo preparado'],['saiu','🚚','Saiu para entrega','O entregador está a caminho'],['entregue','📦','Entregue','Bom proveito! 🍺']];
+    if(s.maquinas)passos.push(['recolhido','🔄','Equipamento recolhido','Atendimento encerrado']);
+    var ordem=passos.map(function(x){return x[0];}),idx=Math.max(0,ordem.indexOf(st));
+    var hist={};(w.hist||[]).forEach(function(h){hist[h.st]=h.em;});
+    var c1=_pubCard(wrap,'Andamento do pedido'+(w.pedNum||s.num?' nº '+(w.pedNum||s.num):''));
+    passos.forEach(function(x,i){var feito=i<idx,atual=i===idx;
+      var r=_el('div','display:flex;gap:12px;align-items:flex-start;padding:8px 0;'+(i<passos.length-1?'border-bottom:1px dashed #E2E8F0;':''));
+      r.appendChild(_el('div','width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:'+(feito?'#DCFCE7':(atual?'#DBEAFE':'#F1F5F9'))+';border:2px solid '+(feito?'#16A34A':(atual?'#2563EB':'#CBD5E1'))+';'+(i>idx?'opacity:.5;':''),x[1]));
+      var t=_el('div','');t.appendChild(_el('div','font-size:15px;font-weight:800;color:'+(i>idx?'#94A3B8':'#0F2044')+';',x[2]+(atual?'  •  agora':'')));t.appendChild(_el('div','font-size:12px;color:#64748B;',hist[x[0]]?new Date(hist[x[0]]).toLocaleString('pt-BR'):(atual||feito?x[3]:'')));r.appendChild(t);c1.appendChild(r);});
+    if(st==='saiu'){
+      var c2=_pubCard(wrap,'📍 Onde está o entregador');
+      var g=w.gps;
+      if(g&&g.lat&&g.lng){
+        var d=0.006,lat=g.lat,lng=g.lng,ifr=document.createElement('iframe');
+        ifr.src='https://www.openstreetmap.org/export/embed.html?bbox='+(lng-d)+','+(lat-d)+','+(lng+d)+','+(lat+d)+'&layer=mapnik&marker='+lat+','+lng;
+        ifr.style.cssText='width:100%;height:280px;border:0;border-radius:12px;';ifr.loading='lazy';c2.appendChild(ifr);
+        var min=Math.round((Date.now()-new Date(g.em).getTime())/60000);
+        c2.appendChild(_el('div','font-size:12px;color:#64748B;margin-top:6px;','Posição atualizada '+(min<=0?'agora há pouco':'há '+min+' min')+'. A página atualiza sozinha.'));
+        var a=_el('a','display:block;margin-top:8px;padding:11px;border-radius:10px;background:#0F2044;color:#fff;text-align:center;font-weight:800;text-decoration:none;','Abrir no Google Maps');a.href='https://www.google.com/maps?q='+lat+','+lng;a.target='_blank';c2.appendChild(a);
+      }else c2.appendChild(_el('div','font-size:14px;color:#475569;','O entregador já saiu. A localização aparece aqui em instantes.'));
+    }
+  }
+  var c3=_pubCard(wrap,'Resumo');
+  function lin(r,v,b){if(!v)return;var l=_el('div','display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:14px;');l.appendChild(_el('span','color:#64748B;',r));l.appendChild(_el(b?'strong':'span','color:#0F2044;text-align:right;',v));c3.appendChild(l);}
+  lin('📅 Entrega',(s.entrega?dBr(s.entrega):'')+(s.hora?' às '+s.hora:''),true);lin('📍 Local',s.local,true);lin('💳 Pagamento',s.pgto);
+  (s.itens||[]).forEach(function(i){lin(i.q+'× '+i.n,R$(i.t));});lin('Total',R$(s.total),true);if(s.saldo>0&&s.saldo<s.total)lin('Falta pagar',R$(s.saldo),true);
+  if(s.tel){var b=_el('a','display:block;margin-top:4px;padding:13px;border-radius:12px;background:#25D366;color:#fff;text-align:center;font-weight:800;text-decoration:none;','💬 Falar com a '+(s.empresa||'distribuidora'));b.href=_waLink(s.tel,'Olá! Sobre o meu pedido'+(w.pedNum?' nº '+w.pedNum:'')+'...');b.target='_blank';wrap.appendChild(b);}
+}
+
+/* ===== PAINEL MASTER: limpar dados de uma distribuidora (com senha do gestor) ===== */
+var LIMPAR_ITENS=[['clientes','👥 Clientes'],['pedidos','🧾 Pedidos'],['produtos','🍺 Produtos'],['maquinas','🔧 Máquinas'],['lancamentos','💰 Lançamentos do financeiro'],['movimentos','📦 Movimentos de estoque'],['alertas','🔔 Alertas'],['solicitacoes','📥 Solicitações antigas'],['_web','🛒 Pedidos online e cadastros recebidos pelo link']];
+async function masterLimparDados(r){
+  if(!_soGestor())return;
+  var dd=null;try{dd=await fsGet(dataPathDist(r.id));}catch(e){toast('Não foi possível ler os dados ('+e.message+').','err');return;}
+  var dados={};if(dd&&dd.fields)Object.keys(dd.fields).forEach(function(k){dados[k]=fromFirestore(dd.fields[k]);});
+  var nWeb=0;try{var wl=await fsGet(webColPath(r.id)+'?pageSize=300');nWeb=((wl&&wl.documents)||[]).length;}catch(e){}
+  var c=_el('div','');
+  c.appendChild(_el('p','margin:0 0 8px;font-size:13px;color:#334155;line-height:1.5;','Marque o que quer APAGAR de '+(r.nome||r.id)+'. Usuários, senhas, configurações, aparência do pedido e a cobrança do sistema NÃO são apagados.'));
+  var chks={},todos=_el('label','display:flex;align-items:center;gap:8px;padding:9px 10px;border:2px solid #DC2626;border-radius:8px;margin-bottom:8px;font-size:14px;font-weight:800;color:#991B1B;cursor:pointer;');
+  var ct=document.createElement('input');ct.type='checkbox';ct.style.cssText='width:18px;height:18px;';todos.appendChild(ct);todos.appendChild(document.createTextNode('Resetar TODOS os lançamentos'));c.appendChild(todos);
+  LIMPAR_ITENS.forEach(function(x){var n=x[0]==='_web'?nWeb:(Array.isArray(dados[x[0]])?dados[x[0]].length:0);
+    var l=_el('label','display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;border:1px solid #E2E8F0;border-radius:8px;margin-bottom:5px;font-size:13px;cursor:pointer;');
+    var a=_el('span','display:flex;align-items:center;gap:8px;');var cb=document.createElement('input');cb.type='checkbox';cb.style.cssText='width:17px;height:17px;';a.appendChild(cb);a.appendChild(document.createTextNode(x[1]));l.appendChild(a);
+    l.appendChild(_el('span','color:#64748B;font-size:12px;',n+' registro'+(n===1?'':'s')));chks[x[0]]=cb;c.appendChild(l);
+    cb.onchange=function(){ct.checked=LIMPAR_ITENS.every(function(y){return chks[y[0]].checked;});};});
+  ct.onchange=function(){Object.keys(chks).forEach(function(k){chks[k].checked=ct.checked;});};
+  var sn=campoEl('Sua senha de gestor *','password',''),cf=campoEl('Digite APAGAR para confirmar *','text','');
+  c.appendChild(_el('div','height:6px;'));c.appendChild(sn.wrap);c.appendChild(cf.wrap);
+  c.appendChild(_el('div','font-size:12px;color:#991B1B;font-weight:700;','⚠️ Não dá para desfazer. Se quiser guardar uma cópia, peça para a distribuidora exportar os dados antes.'));
+  var m=msgEl();c.appendChild(m);
+  dlg('🧹 Limpar dados — '+(r.nome||r.id),c,[{txt:'Cancelar',cls:'bs',fn:function(a){a.fechar();}},{txt:'Apagar selecionados',cls:'bd',fn:async function(a){
+    var sel=Object.keys(chks).filter(function(k){return chks[k].checked;});
+    if(!sel.length)return mostraMsg(m,'Marque pelo menos um item.');
+    if(cf.input.value.trim().toUpperCase()!=='APAGAR')return mostraMsg(m,'Digite APAGAR para confirmar.');
+    var ok=false;try{ok=await confereSenha(sn.input.value,_MASTER_SENHA_HASH);}catch(e){}
+    if(!ok)return mostraMsg(m,'Senha do gestor incorreta.');
+    try{
+      var campos=sel.filter(function(k){return k!=='_web';}),o={};campos.forEach(function(k){o[k]=[];});
+      if(campos.length)await fsPatch(dataPathDist(r.id),fsFields(o),campos);
+      if(sel.indexOf('_web')>=0){var wl=await fsGet(webColPath(r.id)+'?pageSize=300');var ds=((wl&&wl.documents)||[]).map(function(d){return d.name.split('/').pop();});for(var i=0;i<ds.length;i++){try{await fsDelete(webColPath(r.id)+'/'+ds[i]);}catch(e){}}}
+      try{var lk='cm_dist_'+r.id,ls=JSON.parse(localStorage.getItem(lk)||'null');if(ls){campos.forEach(function(k){ls[k]=[];});localStorage.setItem(lk,JSON.stringify(ls));}}catch(e){}
+      a.fechar();toast('Dados apagados: '+sel.map(function(k){return LIMPAR_ITENS.filter(function(x){return x[0]===k;})[0][1].replace(/^\S+\s/,'');}).join(', ')+'.','ok');renderMaster();
+    }catch(e){mostraMsg(m,'Erro ao apagar: '+e.message);}
+  }}]);
+}
+
+/* ===== CONFIGURAÇÕES: pedido online, calculadora e modelo do pedido ===== */
+function cfgPedidoOnlineHtml(cfg){
+  var cc=calcCfg(cfg),fs=formasCfg(cfg).map(function(x){return x[0];}),E=escHtml,h='';
+  h+='<div class="card" style="margin-bottom:20px;"><div class="ch" style="background:#eff6ff;"><h3 style="color:#1e40af;">&#128722; Pedido online, cadastro e calculadora</h3><span style="font-size:11px;color:#64748b;">O que o cliente v&ecirc; nos links</span></div><div class="cb">';
+  h+='<div class="g2"><div class="fi"><label>Modelo padr&atilde;o do pedido impresso</label><select id="cfg-modelo"><option value="termos"'+(modeloPadrao()==='termos'?' selected':'')+'>Com termos</option><option value="simples"'+(modeloPadrao()==='simples'?' selected':'')+'>Simples</option></select></div>';
+  h+='<div class="fi"><label>Dura&ccedil;&atilde;o padr&atilde;o da festa (horas)</label><input type="number" id="cfg-calc-h" min="1" step="0.5" value="'+E(cc.horas)+'"></div></div>';
+  h+='<div class="g2"><div class="fi"><label>Litros por pessoa, por hora</label><input type="number" id="cfg-calc-lph" min="0.1" step="0.05" value="'+E(cc.lph)+'"></div>';
+  h+='<div class="fi"><label>Folga de seguran&ccedil;a (%)</label><input type="number" id="cfg-calc-mg" min="0" step="5" value="'+E(cc.margem)+'"></div></div>';
+  h+='<div style="font-size:12px;color:#1e40af;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;margin-bottom:12px;line-height:1.6;">Calculadora do cliente: <b>pessoas &times; horas &times; litros por pessoa/hora + folga</b>. Exemplo com os valores acima: 40 pessoas &times; '+E(cc.horas)+' h &times; '+E(String(cc.lph).replace('.',','))+' L + '+E(cc.margem)+'% = <b>'+Math.ceil(40*cc.horas*cc.lph*(1+cc.margem/100)-1e-9)+' litros</b>. Para sugerir barris, coloque os litros no nome ou na unidade do produto (ex.: &quot;Chopp Pilsen 50L&quot;).</div>';
+  h+='<div class="fi"><label>Formas de pagamento aceitas no pedido online</label><div style="display:flex;flex-wrap:wrap;gap:10px;">';
+  FORMAS_PGTO.forEach(function(x){h+='<label style="display:flex;align-items:center;gap:6px;font-size:13px;text-transform:none;font-weight:600;"><input type="checkbox" class="cfg-fp" value="'+x[0]+'"'+(fs.indexOf(x[0])>=0?' checked':'')+'> '+x[1]+'</label>';});
+  h+='</div></div>';
+  if(_distId)h+='<div style="display:flex;gap:8px;flex-wrap:wrap;"><button type="button" class="btn bk bsm" onclick="abrirLinkCliente(\'pedido\')">&#128722; Enviar link de pedido</button><button type="button" class="btn bs bsm" onclick="abrirLinkCliente(\'cadastro\')">&#128232; Enviar link de cadastro</button></div>';
+  h+='</div></div>';return h;
+}
+function cfgPedidoOnlineLer(){
+  function v(id){var e=document.getElementById(id);return e?e.value:'';}
+  if(!document.getElementById('cfg-modelo'))return;
+  DB.config.modeloPedido=v('cfg-modelo')==='simples'?'simples':'termos';
+  DB.config.calcHoras=parseFloat(v('cfg-calc-h'))||5;DB.config.calcLph=parseFloat(v('cfg-calc-lph'))||0.5;
+  var mg=parseFloat(v('cfg-calc-mg'));DB.config.calcMargem=isNaN(mg)?10:mg;
+  var fp=[];document.querySelectorAll('.cfg-fp').forEach(function(c){if(c.checked)fp.push(c.value);});DB.config.formasPgto=fp.length?fp:['pix'];
+}
+
 /* ---- PAINEL DO GESTOR ---- */
 function _soGestor(){return _authUser&&_authUser.isMaster===true;}
 var _mTab='resumo',_mRegs=[],_mCad=[],_mFin=[],_mCal=null,_vFil={dist:'',per:'mes',de:'',ate:'',tipo:'',q:''},_fFil={per:'mes'};
@@ -5205,6 +5688,7 @@ function cardDist(r){
   bt('📅 Renovar','bs',function(){masterRenovar(r);});
   bt('🔑 Resetar senha','bs',function(){masterResetSenha(r);});
   bt('✏️ Editar','bs',function(){masterEditar(r);});
+  bt('🧹 Limpar dados','bs',function(){masterLimparDados(r);});
   bt('🗑 Excluir','bd',function(){masterExcluir(r);});
   c.appendChild(ac);return c;
 }
@@ -5388,6 +5872,12 @@ if(checkSolicitarMode()){
   // modo solicitação
 } else if(checkPortalMode()){
   // modo portal
+} else if(checkPedirMode()){
+  /* cliente fazendo pedido online */
+} else if(checkAcompMode()){
+  /* cliente acompanhando a entrega */
+} else if(checkCliCadMode()){
+  /* cliente preenchendo o próprio cadastro */
 } else if(checkCadastroMode()){
   /* página pública de cadastro de nova distribuidora */
 } else if(checkReciboMode()){
