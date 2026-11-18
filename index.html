@@ -957,7 +957,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão com o Firebase</a></div>
-    <div class="login-version">ChoppMaster ERP v3.5 · 18/11</div>
+    <div class="login-version">ChoppMaster ERP v3.6 · 18/11</div>
   </div>
 </div>
 
@@ -2039,10 +2039,10 @@ function renderConfig(){
   h+='<div class="fi"><label>Cl&aacute;usulas de Responsabilidade</label>';
   h+='<textarea id="cfg-tv" style="min-height:120px;font-size:13px;line-height:1.6;" placeholder="1. O comprador declara estar ciente das condi&ccedil;&otilde;es acordadas.">'+escHtml(cfg.termoVenda||TERMO_VENDA_PADRAO)+"</textarea></div><button type=\"button\" class=\"btn bs bsm\" onclick=\"document.getElementById('cfg-tv').value=TERMO_VENDA_PADRAO\">↺ Usar o texto padrão</button></div></div>";
   h+='<div class="card" style="margin-bottom:20px;"><div class="ch" style="background:#fffbeb;"><h3 style="color:#92400e;">&#128295; Cl&aacute;usulas de Loca&ccedil;&atilde;o &mdash; M&aacute;quinas</h3>';
-  h+='<span style="font-size:11px;background:#fef9c3;color:#d97706;padding:3px 8px;border-radius:20px;font-weight:700;">Sai quando o pedido tem m&aacute;quina</span></div>';
+  h+='<span style="font-size:11px;background:#fef9c3;color:#d97706;padding:3px 8px;border-radius:20px;font-weight:700;">Sai no pedido com termos</span></div>';
   h+='<div class="cb"><div style="font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px;margin-bottom:12px;">Complementa quando pedido cont&eacute;m chopeiras. Vari&aacute;veis: <code>{maquina}</code> <code>{entrega}</code> <code>{devolucao}</code></div>';
   h+='<div class="fi"><label>Cl&aacute;usulas de Loca&ccedil;&atilde;o</label>';
-  h+='<textarea id="cfg-tl" style="min-height:140px;font-size:13px;line-height:1.6;" placeholder="1. OBJETO: Loca&ccedil;&atilde;o de {maquina}.&#10;2. PRAZO: Entrega {entrega}. Devolu&ccedil;&atilde;o: {devolucao}.">'+escHtml(cfg.termoLocacao||TERMO_LOC_PADRAO)+"</textarea></div><button type=\"button\" class=\"btn bs bsm\" onclick=\"document.getElementById('cfg-tl').value=TERMO_LOC_PADRAO\">↺ Usar o texto padrão</button></div></div>";
+  h+='<textarea id="cfg-tl" style="min-height:140px;font-size:13px;line-height:1.6;" placeholder="1. OBJETO: Loca&ccedil;&atilde;o de {maquina}.&#10;2. PRAZO: Entrega {entrega}. Devolu&ccedil;&atilde;o: {devolucao}.">'+escHtml(cfg.termoLocacao||TERMO_LOC_PADRAO)+"</textarea></div><label style=\"display:flex;align-items:center;gap:8px;font-size:13px;margin:0 0 10px;cursor:pointer;\"><input type=\"checkbox\" id=\"cfg-loc-sempre\""+(locSempre(cfg)?" checked":"")+" style=\"width:17px;height:17px;\"> Imprimir as cl&aacute;usulas de loca&ccedil;&atilde;o em todo pedido com termos (desmarque para sair s&oacute; quando o pedido tiver m&aacute;quina)</label><button type=\"button\" class=\"btn bs bsm\" onclick=\"document.getElementById('cfg-tl').value=TERMO_LOC_PADRAO\">↺ Usar o texto padrão</button></div></div>";
   h+=cfgNuvemHtml();
   h+=cfgPedidoOnlineHtml(cfg);
   if(false){
@@ -3704,7 +3704,7 @@ function enviarAprovacao(id){
   var pgT=(p.pagamentos||[]).reduce(function(s,x){return s+(x.valor||0);},0);
   var hM=(p.itens||[]).some(function(i){return i.tipo==='maquina';});
   var _tm=termosCfg(cfg),_nmM=(p.itens||[]).filter(function(i){return i.tipo==='maquina';}).map(_nomeItem).join(', ');
-  var termos=(p.modelo||modeloPadrao())==='simples'?'':('TERMO DE RESPONSABILIDADE — VENDA\n'+_tm.venda+(hM?'\n\nCLÁUSULAS DE LOCAÇÃO — MÁQUINAS\n'+_tm.loc.replace(/\{maquina\}/g,_nmM).replace(/\{entrega\}/g,dBr(p.entrega)).replace(/\{devolucao\}/g,dBr(p.devolucao)):''));
+  var termos=(p.modelo||modeloPadrao())==='simples'?'':('TERMO DE RESPONSABILIDADE — VENDA\n'+_tm.venda+((hM||locSempre(cfg))?'\n\nCLÁUSULAS DE LOCAÇÃO — MÁQUINAS\n'+_tm.loc.replace(/\{maquina\}/g,_nmM).replace(/\{entrega\}/g,dBr(p.entrega)).replace(/\{devolucao\}/g,dBr(p.devolucao)):''));
   var snap={empresa:cfg.empresa||'ChoppMaster',tel:cfg.tel||'',num:p.num||'',cliente:cli.nome||'',doc:cli.doc||'',
     local:p.local||'',entrega:p.entrega||'',hora:p.horaEntrega||'',devolucao:p.devolucao||'',
     itens:(p.itens||[]).map(function(i){var n=i.refId;
@@ -4699,6 +4699,7 @@ var TERMO_LOC_PADRAO=[
 '11. O cliente declara que recebeu as orientações de uso e que leu e concorda com este termo ao assinar ou aprovar o pedido.'].join('\n');
 function termosCfg(cfg){cfg=cfg||DB.config||{};return {venda:String(cfg.termoVenda||'').trim()||TERMO_VENDA_PADRAO,loc:String(cfg.termoLocacao||'').trim()||TERMO_LOC_PADRAO};}
 function pgtoNome(c){return ({a_combinar:'A combinar',pix:'PIX',dinheiro:'Dinheiro',cartao_debito:'Cartão de débito',cartao_credito:'Cartão de crédito',transferencia:'Transferência',boleto:'Boleto'})[c]||c||'—';}
+function locSempre(cfg){cfg=cfg||DB.config||{};return cfg.locacaoSempre!==false;}
 function modeloPadrao(){var m=(DB.config||{}).modeloPedido;return m==='simples'?'simples':'termos';}
 function _nomeItem(it){var nm=it.nome||it.refId;if(it.tipo==='produto'){var pr=(DB.produtos||[]).find(function(x){return x.id===it.refId;});if(pr)nm=pr.nome;}else{var mq=(DB.maquinas||[]).find(function(x){return x.id===it.refId;});if(mq)nm=mq.nome;}return nm||'—';}
 function _unItem(it){if(it.tipo==='maquina')return 'loc.';var pr=(DB.produtos||[]).find(function(x){return x.id===it.refId;});return (pr&&pr.un)||'un';}
@@ -4805,7 +4806,7 @@ function htmlPedTermos(p){
   +'<div style="display:flex;justify-content:flex-end;gap:14px;font-size:8.5px;margin-bottom:5px;">'+(p.desconto?'<span>Subtotal '+fm(sub)+'</span><span style="color:#059669;">Desconto − '+fm(p.desconto)+'</span>':'')+'<span style="font-size:12px;font-weight:900;color:#0f2044;">TOTAL '+fm(p.total)+'</span></div>'
   +(p.obs?'<div style="background:#fffbeb;border-left:3px solid #f59e0b;padding:4px 8px;margin-bottom:5px;font-size:8.5px;"><b>Obs.:</b> '+E(p.obs)+'</div>':'')
   /* termos lado a lado */
-  +'<div style="display:flex;gap:6px;margin-bottom:6px;">'+clausulas(tm.venda,'Termo de responsabilidade — venda','#475569','#f8fafc','#e2e8f0')+(hM?clausulas(tm.loc,'Cláusulas de locação — máquinas','#92400e','#fffbeb','#fde68a'):'')+'</div>'
+  +'<div style="display:flex;gap:6px;margin-bottom:6px;">'+clausulas(tm.venda,'Termo de responsabilidade — venda','#475569','#f8fafc','#e2e8f0')+((hM||locSempre(cfg))?clausulas(tm.loc,'Cláusulas de locação — máquinas','#92400e','#fffbeb','#fde68a'):'')+'</div>'
   /* recebimento */
   +'<div style="border:1px dashed #94a3b8;border-radius:5px;padding:5px 8px;font-size:8.5px;margin-bottom:6px;">'+rot('Recebimento da entrega')
   +'Recebi os produtos'+(hM?' e equipamentos':'')+' acima em perfeitas condições em ____/____/______ às ____:____ &nbsp; Nome legível: ________________________________</div>'
@@ -5358,6 +5359,7 @@ function cfgPedidoOnlineLer(){
   function v(id){var e=document.getElementById(id);return e?e.value:'';}
   if(!document.getElementById('cfg-modelo'))return;
   DB.config.modeloPedido=v('cfg-modelo')==='simples'?'simples':'termos';
+  var ls=document.getElementById('cfg-loc-sempre');if(ls)DB.config.locacaoSempre=!!ls.checked;
   DB.config.calcHoras=parseFloat(v('cfg-calc-h'))||5;DB.config.calcLph=parseFloat(v('cfg-calc-lph'))||0.5;
   var mg=parseFloat(v('cfg-calc-mg'));DB.config.calcMargem=isNaN(mg)?10:mg;
   var fp=[];document.querySelectorAll('.cfg-fp').forEach(function(c){if(c.checked)fp.push(c.value);});DB.config.formasPgto=fp.length?fp:['pix'];
