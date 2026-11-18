@@ -957,7 +957,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão com o Firebase</a></div>
-    <div class="login-version">ChoppMaster ERP v3.4 · 18/11</div>
+    <div class="login-version">ChoppMaster ERP v3.5 · 18/11</div>
   </div>
 </div>
 
@@ -2043,8 +2043,9 @@ function renderConfig(){
   h+='<div class="cb"><div style="font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px;margin-bottom:12px;">Complementa quando pedido cont&eacute;m chopeiras. Vari&aacute;veis: <code>{maquina}</code> <code>{entrega}</code> <code>{devolucao}</code></div>';
   h+='<div class="fi"><label>Cl&aacute;usulas de Loca&ccedil;&atilde;o</label>';
   h+='<textarea id="cfg-tl" style="min-height:140px;font-size:13px;line-height:1.6;" placeholder="1. OBJETO: Loca&ccedil;&atilde;o de {maquina}.&#10;2. PRAZO: Entrega {entrega}. Devolu&ccedil;&atilde;o: {devolucao}.">'+escHtml(cfg.termoLocacao||TERMO_LOC_PADRAO)+"</textarea></div><button type=\"button\" class=\"btn bs bsm\" onclick=\"document.getElementById('cfg-tl').value=TERMO_LOC_PADRAO\">↺ Usar o texto padrão</button></div></div>";
+  h+=cfgNuvemHtml();
   h+=cfgPedidoOnlineHtml(cfg);
-  if(!_distId){
+  if(false){
   var fbSt=_fbUid&&_fbLastSaved?'<span style="background:#dcfce7;color:#166534;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:700;">&#9679; Conectado</span>':'<span style="background:#fee2e2;color:#991b1b;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:700;">&#9675; Desconectado</span>';
   h+='<div class="card" style="margin-bottom:20px;"><div class="ch" style="background:#eff6ff;"><h3 style="color:#1e40af;">&#9729; Sincroniza&ccedil;&atilde;o na Nuvem</h3>'+fbSt+'</div>';
   h+='<div class="cb"><div style="font-size:12px;color:#1e40af;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;margin-bottom:12px;line-height:1.7;">Crie um projeto gratuito em <strong>firebase.google.com</strong> &rarr; Firestore &rarr; cole as credenciais abaixo para sincronizar dados entre dispositivos.</div>';
@@ -3493,6 +3494,7 @@ function fbLoad(callback){
 function fbInit(){
   var url=fbUrl();
   if(!url){fbStatus('Firebase não configurado','#6b7280');return false;}
+  fbStatus('Conectando à nuvem...','#854d0e');
   fbStartPoll();
   return true;
 }
@@ -3503,20 +3505,22 @@ function fbStartPoll(){
   _fbPollTimer=setInterval(function(){
     var url=fbUrl();if(!url)return;
     fetch(url)
-    .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();})
+    .then(function(r){if(r.status===404){if(!_fbSyncing)fbSave();return null;}if(!r.ok)throw new Error(r.status);return r.json();})
     .then(function(doc){
       if(!doc||!doc.fields)return;
       if(_fbDirty||_fbSyncing)return; /* há alteração local ainda não enviada: não sobrescrever */
+      fbStatus('✓ Nuvem sincronizada '+new Date().toLocaleTimeString('pt-BR').slice(0,5),'#166534');
       var fields=doc.fields;
       // Re-renderiza página atual
       var pages=['dashboard','pedidos','financeiro','produtos','maquinas','clientes'];
       Object.keys(fields).forEach(function(k){DB[k]=fromFirestore(fields[k]);});
+      try{localStorage.setItem(_distId?'cm_dist_'+_distId:'cm_v7',JSON.stringify(DB));}catch(e){}
       for(var i=0;i<pages.length;i++){
         var pg=document.getElementById('pg-'+pages[i]);
         if(pg&&pg.style.display!=='none'){goTo(pages[i]);break;}
       }
     })
-    .catch(function(){});
+    .catch(function(e){fbStatus('Sem conexão com a nuvem','#dc2626');});
   },15000);
 }
 
@@ -5359,6 +5363,27 @@ function cfgPedidoOnlineLer(){
   var fp=[];document.querySelectorAll('.cfg-fp').forEach(function(c){if(c.checked)fp.push(c.value);});DB.config.formasPgto=fp.length?fp:['pix'];
 }
 
+/* ===== CONFIGURAÇÕES: conexão com a nuvem (Firebase) ===== */
+function cfgNuvemHtml(){
+  var cr=fbCred(),doc=_distId?'distribuidoras/dist_'+_distId:'dados principais';
+  var h='<div class="card" style="margin-bottom:20px;"><div class="ch" style="background:#eff6ff;"><h3 style="color:#1e40af;">&#9729; Nuvem (Firebase)</h3><span id="cfg-nuvem-st" style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:700;background:#fef9c3;color:#854d0e;">verificando...</span></div><div class="cb">';
+  h+='<div style="font-size:13px;color:#334155;line-height:1.7;">Projeto: <b>'+escHtml(cr.pid)+'</b><br>Seus dados ficam em: <b>'+escHtml(doc)+'</b><br><span style="font-size:12px;color:#64748b;">O sistema salva sozinho na nuvem a cada alteração e busca as novidades a cada 15 segundos. Assim os dados aparecem iguais no celular e no computador.</span></div>';
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"><button type="button" class="btn bp bsm" onclick="nuvemSincronizar()">&#128260; Sincronizar agora</button><button type="button" class="btn bs bsm" onclick="testarConexao()">&#128268; Testar conex&atilde;o</button></div>';
+  h+='</div></div>';
+  setTimeout(nuvemVerificar,50);return h;
+}
+function nuvemVerificar(){
+  var el=document.getElementById('cfg-nuvem-st');if(!el)return;var url=fbUrl();
+  function st(t,ok){el.textContent=t;el.style.background=ok?'#dcfce7':'#fee2e2';el.style.color=ok?'#166534':'#991b1b';}
+  if(!url){st('não configurado',false);return;}
+  fetch(url).then(function(r){if(r.ok||r.status===404)st('● Conectado',true);else st('Erro '+r.status+' — toque em Testar conexão',false);}).catch(function(){st('Sem conexão',false);});
+}
+function nuvemSincronizar(){
+  if(!fbUrl()){toast('Nuvem não configurada.','err');return;}
+  if(!_fbPollTimer)fbInit();
+  _fbDirty++;fbSave();toast('Enviando seus dados para a nuvem...','ok');
+  var n=0,t=setInterval(function(){n++;if(!_fbSyncing&&!_fbDirty){clearInterval(t);toast('✓ Dados sincronizados com a nuvem.','ok');nuvemVerificar();}else if(n>40){clearInterval(t);toast('A nuvem não respondeu. Toque em "Testar conexão".','err');nuvemVerificar();}},500);
+}
 /* ---- PAINEL DO GESTOR ---- */
 function _soGestor(){return _authUser&&_authUser.isMaster===true;}
 var _mTab='resumo',_mRegs=[],_mCad=[],_mFin=[],_mCal=null,_vFil={dist:'',per:'mes',de:'',ate:'',tipo:'',q:''},_fFil={per:'mes'};
@@ -5855,7 +5880,7 @@ function voltarParaMaster(){
 function fbUrl(){
   var cfg=DB.config||{}, pid=(cfg.fbPid||'').trim(), key=(cfg.fbKey||'').trim();
   if(pid==='choppmaster-wendel'){pid='';key='';}
-  if(!pid||!key){ if(!_distId) return null; pid=_FB_PID_PADRAO; key=_FB_KEY_PADRAO; }
+  if(!pid||!key){ pid=_FB_PID_PADRAO; key=_FB_KEY_PADRAO; }
   var docId=_distId?'dist_'+_distId:'dados_master';
   _fbUid=docId;_fbPid=pid;_fbKey=key;
   return 'https://firestore.googleapis.com/v1/projects/'+pid+'/databases/(default)/documents/distribuidoras/'+docId+'/dados/principal?key='+key;
