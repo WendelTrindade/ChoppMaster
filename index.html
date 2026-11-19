@@ -1182,7 +1182,7 @@ a.ap-dt-nm:hover{text-decoration:underline;color:#2563EB;}
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão</a></div>
-    <div class="login-version">ChoppMaster ERP v5.0 · 19/11</div>
+    <div class="login-version">ChoppMaster ERP v5.1 · 19/11</div>
   </div>
 </div>
 
@@ -1930,7 +1930,7 @@ function abrirRec(pedId){
   var p=DB.pedidos.find(function(x){return x.id===pedId;});if(!p)return;
   var c=DB.clientes.find(function(x){return x.id===p.clienteId;});var sl=getSaldo(p);
   document.getElementById('ri').value=pedId;
-  document.getElementById('ri-info').innerHTML='<strong>'+(c?c.nome:'—')+'</strong> — Pedido #'+p.num+'<br>Total: '+R$(p.total)+' | Saldo: <strong style="color:#991b1b;">'+R$(sl)+'</strong>';
+  document.getElementById('ri-info').innerHTML='<strong>'+escHtml(c?c.nome:'—')+'</strong> — Pedido #'+p.num+'<br>Total: '+R$(p.total)+' | Saldo: <strong style="color:#991b1b;">'+R$(sl)+'</strong>';
   setMoney('ri-val',sl);
   document.getElementById('ri-dt').value=hj();document.getElementById('ri-obs').value='';
   openM('mrec');
@@ -2191,11 +2191,11 @@ function renderClis(){
   var el=document.getElementById('lcli');
   if(!clis.length){el.innerHTML='<div style="padding:40px;text-align:center;color:#9a8060;">'+(bsc?'Nenhum cliente encontrado.':'Nenhum cliente. <button class="btn bp bsm" onclick="abrirCli()">+ Adicionar</button>')+'</div>';return;}
   el.innerHTML='<div style="overflow-x:auto;"><table class="tbl"><thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Telefone</th><th>E-mail</th><th>Pedidos</th><th>Ações</th></tr></thead><tbody>'
-  +clis.map(function(c){var ps=DB.pedidos.filter(function(p){return p.clienteId===c.id;}).length;return '<tr><td><div style="font-weight:700;"><a href="#" onclick="fichaCli(\''+c.id+'\');return false;" style="color:#2563eb;text-decoration:underline;">'+escHtml(c.nome||'')+'</a></div>'+(c.end?'<div style="font-size:11px;color:#9a8060;">'+(c.end.split('\n')[0])+'</div>':'')+'</td><td>'+(c.doc||'—')+'</td><td>'+(c.tel||'—')+'</td><td>'+(c.email||'—')+'</td><td><span class="badge bgb">'+ps+'</span></td><td><button class="btn bgh bsm" onclick="abrirCli(\''+c.id+'\')">✏️</button> <button class="btn bd bsm" onclick="exclC(\''+c.id+'\')">🗑</button></td></tr>';}).join('')+'</tbody></table></div>';
+  +clis.map(function(c){var ps=DB.pedidos.filter(function(p){return p.clienteId===c.id;}).length;return '<tr><td><div style="font-weight:700;"><a href="#" onclick="fichaCli(\''+c.id+'\');return false;" style="color:#2563eb;text-decoration:underline;">'+escHtml(c.nome||'')+'</a></div>'+(c.end?'<div style="font-size:11px;color:#9a8060;">'+escHtml(c.end.split('\n')[0])+'</div>':'')+'</td><td>'+escHtml(c.doc||'—')+'</td><td>'+escHtml(c.tel||'—')+'</td><td>'+escHtml(c.email||'—')+'</td><td><span class="badge bgb">'+ps+'</span></td><td><button class="btn bgh bsm" onclick="abrirCli(\''+c.id+'\')">✏️</button> <button class="btn bd bsm" onclick="exclC(\''+c.id+'\')">🗑</button></td></tr>';}).join('')+'</tbody></table></div>';
 }
 
 /* ===== IMPRESSÃO ===== */
-function escHtml(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function escHtml(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
 
 /* ---- APARÊNCIA DO PEDIDO (logo, cor, frase, rodapé) ---- */
 function corPedido(cfg){var c=(cfg||DB.config||{}).cor||'';return /^#[0-9a-fA-F]{6}$/.test(c)?c:'#2563eb';}
@@ -3651,19 +3651,24 @@ function toFirestore(obj){
 }
 
 /* Converte formato Firestore para objeto JS */
+/* SEGURANÇA: tudo que vem da nuvem passa por aqui — tira caracteres que poderiam virar código na tela */
+function _limpaTxt(s){s=String(s);if(s.indexOf('data:image/')===0)return s;s=s.replace(/[<>`]/g,'');var c=s.charAt(0);if(c!=='{'&&c!=='[')s=s.replace(/"/g,'”');return s;}
+function _limpaId(s){return String(s).replace(/[^A-Za-z0-9_.\-]/g,'');}
 function fromFirestore(val){
   if(!val) return null;
   if('nullValue' in val) return null;
   if('booleanValue' in val) return val.booleanValue;
   if('integerValue' in val) return parseInt(val.integerValue);
   if('doubleValue' in val) return parseFloat(val.doubleValue);
-  if('stringValue' in val) return val.stringValue;
+  if('stringValue' in val) return _limpaTxt(val.stringValue);
   if('timestampValue' in val) return val.timestampValue;
   if('arrayValue' in val) return (val.arrayValue.values||[]).map(fromFirestore);
   if('mapValue' in val){
     var o={};
     Object.keys(val.mapValue.fields||{}).forEach(function(k){
-      o[k]=fromFirestore(val.mapValue.fields[k]);
+      var v=fromFirestore(val.mapValue.fields[k]);
+      if(typeof v==='string'&&(k==='id'||/Id$/.test(k)))v=_limpaId(v);
+      o[k]=v;
     });
     return o;
   }
@@ -4082,7 +4087,7 @@ function fsPatch(path,fields,mask){
     .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();});
 }
 function fsFields(o){var f={};Object.keys(o).forEach(function(k){f[k]=toFirestore(o[k]);});return f;}
-function regParse(doc){var o={};var f=doc.fields||{};Object.keys(f).forEach(function(k){o[k]=fromFirestore(f[k]);});o.id=doc.name.split('/').pop();return o;}
+function regParse(doc){var o={};var f=doc.fields||{};Object.keys(f).forEach(function(k){var v=fromFirestore(f[k]);if(typeof v==='string'&&/Id$/.test(k))v=_limpaId(v);o[k]=v;});o.id=_limpaId(doc.name.split('/').pop());return o;}
 function normCodigo(s){return String(s||'').toUpperCase().replace(/[^A-Z0-9-]/g,'').slice(0,20);}
 function dataPathDist(cod){return 'distribuidoras/dist_'+cod+'/dados/principal';}
 function _vj(reg){try{return JSON.parse(reg.vendasJson||'{}');}catch(e){return {};}}
@@ -5987,7 +5992,7 @@ function agItemHtml(e){
    +'<div class="ag-it-t" onclick="verPed(\''+p.id+'\')"><b>'+escHtml(cli.nome||'—')+' <span class="ap-mut">#'+escHtml(p.num)+'</span></b><b>'+R$(p.total)+'</b></div>'
    +'<div class="ap-mut ap-ell">📍 '+escHtml(p.local||'local a combinar')+'</div><div class="ap-mut ap-ell">'+escHtml(itens)+'</div>'
    +'<div class="ag-it-r">'+pill+(sl>0&&!rec?'<span class="ap-pill p-vm">Falta '+R$(sl)+'</span>':'')+(e.semData?'<span class="ap-pill p-cz">sem data de entrega</span>':'')+'</div>'
-   +'<div class="ag-bts"><button class="ag-b" onclick="verPed(\''+p.id+'\')">👁 Ver</button>'+(cli.tel?'<button class="ag-b wa" onclick="_abreWa(\''+escHtml(cli.tel)+'\',\'Olá '+escHtml(String(cli.nome||'').replace(/'/g,''))+'! \')">📲 WhatsApp</button>':'')+mapa
+   +'<div class="ag-bts"><button class="ag-b" onclick="verPed(\''+p.id+'\')">👁 Ver</button>'+(cli.tel?'<button class="ag-b wa" onclick="_abreWa(\''+String(cli.tel).replace(/[^0-9+]/g,'')+'\',\'Olá '+escHtml(String(cli.nome||'').replace(/'/g,''))+'! \')">📲 WhatsApp</button>':'')+mapa
    +(!rec&&!feito?'<button class="ag-b az" onclick="setEntregaSt(\''+p.id+'\',\''+(es==='saiu'?'entregue':'saiu')+'\',true);renderCalendario()">'+(es==='saiu'?'📦 Entregue':'🚚 Saiu')+'</button>':'')
    +(rec&&!feito?'<button class="ag-b az" onclick="setEntregaSt(\''+p.id+'\',\'recolhido\',true);renderCalendario()">✓ Recolhido</button>':'')+'</div></div></div>';
 }
