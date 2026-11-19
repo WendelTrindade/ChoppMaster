@@ -431,6 +431,21 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 /* Header user info */
 #user-info{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver3);}
 #user-info strong{color:var(--dk);font-size:13px;}
+.pcard{background:#fff;border:1px solid #e2e8f0;border-radius:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(15,32,68,.06);overflow:hidden;}
+.pcard-cancel{opacity:.6;}
+.pcard-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:12px 14px 6px;}
+.pcard-num{font-size:12px;font-weight:800;color:#b45309;}
+.pcard-cli{font-size:16px;font-weight:800;color:#2563eb;text-decoration:underline;word-break:break-word;}
+.pcard-info{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px 14px;padding:4px 14px 12px;font-size:12px;color:#64748b;}
+.pcard-info b{display:block;font-size:14px;color:#0f2044;}
+.pcard-local{grid-column:1/-1;font-size:13px;color:#1e40af;font-weight:700;}
+.pcard-acoes{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:6px;padding:10px 12px 12px;background:#f8fafc;border-top:1px solid #e2e8f0;}
+.pa{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:56px;border-radius:10px;border:1px solid #e2e8f0;background:#fff;font-size:11.5px;font-weight:700;color:#334155;cursor:pointer;padding:6px 4px;font-family:inherit;transition:transform .08s,box-shadow .15s;}
+.pa:hover{box-shadow:0 2px 8px rgba(15,32,68,.12);}.pa:active{transform:scale(.96);}
+.pa span{font-size:20px;line-height:1;}
+.pa.az{background:#eff6ff;border-color:#bfdbfe;color:#1e40af;}.pa.vd{background:#ecfdf5;border-color:#a7f3d0;color:#065f46;}.pa.wa{background:#dcfce7;border-color:#86efac;color:#166534;}.pa.am{background:#fffbeb;border-color:#fde68a;color:#92400e;}.pa.vm{background:#fef2f2;border-color:#fecaca;color:#991b1b;}
+@media(min-width:900px){.pcard-acoes{display:flex;flex-wrap:wrap;}.pa{flex-direction:row;min-height:38px;padding:7px 14px;font-size:13px;gap:6px;}.pa span{font-size:16px;}}
+
 @media(max-width:768px){#tb{flex-wrap:wrap;row-gap:6px;}#tacts{flex-wrap:wrap;}#user-info{flex-wrap:wrap;justify-content:flex-end;max-width:100%;}#user-nome{display:none;}#mdt-mo .mb{max-width:100vw;}}
 .logout-btn{background:none;border:1px solid var(--border);border-radius:6px;
   padding:4px 10px;font-size:11px;color:var(--silver3);cursor:pointer;transition:.15s;}
@@ -957,7 +972,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão com o Firebase</a></div>
-    <div class="login-version">ChoppMaster ERP v3.9 · 18/11</div>
+    <div class="login-version">ChoppMaster ERP v4.0 · 18/11</div>
   </div>
 </div>
 
@@ -1527,28 +1542,30 @@ function renderPeds(){
   if(fst)peds=peds.filter(function(p){return getStatus(p)===fst||p.status===fst;});
   var el=document.getElementById('lped');
   if(!peds.length){el.innerHTML='<div style="padding:40px;text-align:center;color:#9a8060;">Nenhum pedido.<br><br><button class="btn bp" onclick="abrirPed()">+ Criar primeiro pedido</button></div>';return;}
-  el.innerHTML='<div style="overflow-x:auto;"><table class="tbl"><thead><tr><th>Nº</th><th>Cliente</th><th>Data</th><th>Entrega</th><th>Devolução</th><th>Total</th><th>Saldo</th><th>Status</th><th>Ações</th></tr></thead><tbody>'
-  +peds.map(function(p){
+  el.innerHTML=peds.map(function(p){
     var c=DB.clientes.find(function(x){return x.id===p.clienteId;});
-    var st=getStatus(p);var sl=getSaldo(p);
+    var st=getStatus(p),sl=getSaldo(p),pid=p.id;
     var vc=p.vencSaldo&&p.vencSaldo<hj()&&st!=='pago'&&st!=='cancelado';
     var hM=(p.itens||[]).some(function(i){return i.tipo==='maquina';});
-    return '<tr><td style="font-weight:700;color:var(--gd);">#'+p.num+'</td>'
-    +'<td><div style="font-weight:700;">'+(c?'<a href="#" onclick="fichaCli(\''+c.id+'\');return false;" style="color:#2563eb;text-decoration:underline;">'+escHtml(c.nome)+'</a>':'—')+'</div>'+(c&&c.tel?'<div style="font-size:11px;color:#9a8060;">'+c.tel+'</div>':'')+'</td>'
-    +'<td>'+dBr(p.data)+'</td><td>'+dBr(p.entrega)+(p.horaEntrega?' <span style="font-size:11px;color:#64748b;">'+p.horaEntrega+'</span>':'')+(p.entregaSt&&p.entregaSt!=='confirmado'?'<div style="font-size:10px;font-weight:700;color:#2563eb;">'+entStNome(p.entregaSt)+'</div>':'')+'</td>'
-    +'<td>'+(p.devolucao?'<span style="'+(p.devolucao<hj()&&st!=='devolvido'&&st!=='cancelado'?'color:#991b1b;font-weight:700;':'')+'">'+dBr(p.devolucao)+'</span>':'—')+'</td>'
-    +'<td style="font-weight:700;">'+R$(p.total)+'</td>'
-    +'<td style="'+(sl>0?'color:#991b1b;font-weight:700;':'color:#166534;')+'">'+R$(sl)+(vc?' ⚠':'')+'</td>'
-    +'<td>'+bSt(st)+(p.aprov?' <span class="badge bgr">✅ Aprovado</span>':(p.aprovToken?' <span class="badge bgy">⏳ Aguardando assinatura</span>':''))+'</td>'
-    +'<td><div style="display:flex;gap:3px;flex-wrap:wrap;">'
-    +'<button class="btn bsm bgh" onclick="verPed(\''+p.id+'\')" title="Ver">👁</button>'
-    +'<button class="btn bsm bgh" onclick="abrirPed(\''+p.id+'\')" title="Editar">✏️</button>'
-    +(sl>0&&st!=='cancelado'?'<button class="btn bsm bk" onclick="abrirRec(\''+p.id+'\')" title="Receber">💰</button>':'')
-    +'<button class="btn bsm bgh" onclick="escolherImpressao(\''+p.id+'\')" title="Gerar PDF">📄</button>'+(st!=='cancelado'?'<button class="btn bsm bk" onclick="enviarPedWhats(\''+p.id+'\')" title="Enviar no WhatsApp / assinatura">📲</button>':'')+(sl>0&&st!=='cancelado'?'<button class="btn bsm bs" onclick="cobrarPed(\''+p.id+'\')" title="Cobrar no WhatsApp">💬</button>':'')
-    +(hM&&st!=='devolvido'&&st!=='cancelado'?'<button class="btn bsm bs" onclick="mkDev(\''+p.id+'\')" title="Devolvido">🔄</button>':'')
-    +(st!=='cancelado'&&st!=='pago'?'<button class="btn bsm bd" onclick="cancelPed(\''+p.id+'\')" title="Cancelar">✕</button>':'')
-    +'</div></td></tr>';
-  }).join('')+'</tbody></table></div>';
+    var devAtr=p.devolucao&&p.devolucao<hj()&&st!=='devolvido'&&st!=='cancelado';
+    function b(cls,ic,t,fn,tit){return '<button class="pa '+cls+'" onclick="'+fn+'(\''+pid+'\')" title="'+(tit||t)+'"><span>'+ic+'</span>'+t+'</button>';}
+    return '<div class="pcard'+(st==='cancelado'?' pcard-cancel':'')+'">'
+    +'<div class="pcard-top"><div style="min-width:0;"><div class="pcard-num">PEDIDO #'+escHtml(p.num)+(p.origem==='online'?' · 🛒 online':'')+'</div>'
+    +(c?'<a class="pcard-cli" href="#" onclick="fichaCli(\''+c.id+'\');return false;">'+escHtml(c.nome)+'</a>':'<div class="pcard-cli" style="text-decoration:none;color:#0f2044;">—</div>')
+    +(c&&c.tel?'<div style="font-size:11px;color:#94a3b8;">'+escHtml(c.tel)+'</div>':'')+'</div>'
+    +'<div style="text-align:right;display:flex;flex-direction:column;gap:4px;align-items:flex-end;">'+bSt(st)+(p.aprov?'<span class="badge bgr">✅ Assinado</span>':(p.aprovToken?'<span class="badge bgy">⏳ Aguardando assinatura</span>':''))+(p.entregaSt&&p.entregaSt!=='confirmado'?'<span style="font-size:11px;font-weight:700;color:#2563eb;">'+entStNome(p.entregaSt)+'</span>':'')+'</div></div>'
+    +'<div class="pcard-info"><div>Entrega<b>'+(p.entrega?dBr(p.entrega):'—')+(p.horaEntrega?' '+escHtml(p.horaEntrega):'')+'</b></div>'
+    +(hM?'<div>Devolução<b style="'+(devAtr?'color:#991b1b;':'')+'">'+(p.devolucao?dBr(p.devolucao):'—')+(devAtr?' ⚠':'')+'</b></div>':'')
+    +'<div>Total<b>'+R$(p.total)+'</b></div><div>Saldo<b style="color:'+(sl>0?'#991b1b':'#166534')+';">'+R$(sl)+(vc?' ⚠':'')+'</b></div>'
+    +(p.local?'<div class="pcard-local">📍 '+escHtml(p.local)+'</div>':'')+'</div>'
+    +'<div class="pcard-acoes">'
+    +b('az','👁','Ver','verPed')+b('','✏️','Editar','abrirPed')+b('az','📄','PDF','escolherImpressao','Gerar PDF')
+    +(st!=='cancelado'?b('wa','📲','WhatsApp','enviarPedWhats','Enviar no WhatsApp / assinatura'):'')
+    +(sl>0&&st!=='cancelado'?b('vd','💰','Receber','abrirRec')+b('am','💬','Cobrar','cobrarPed','Cobrar no WhatsApp'):'')
+    +(hM&&st!=='devolvido'&&st!=='cancelado'?b('','🔄','Devolvido','mkDev'):'')
+    +(st!=='cancelado'&&st!=='pago'?b('vm','✕','Cancelar','cancelPed'):'')
+    +'</div></div>';
+  }).join('');
 }
 
 function abrirPed(id){
