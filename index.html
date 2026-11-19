@@ -1182,7 +1182,7 @@ a.ap-dt-nm:hover{text-decoration:underline;color:#2563EB;}
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão</a></div>
-    <div class="login-version">ChoppMaster ERP v5.2 · 19/11</div>
+    <div class="login-version">ChoppMaster ERP v5.3 · 19/11</div>
   </div>
 </div>
 
@@ -6591,6 +6591,14 @@ async function authContaPara(cod,login,senha,acc){
   return {uid:n.uid,email:email};
 }
 function _authGuardaUid(cod,dados){try{fsPatch(dataPathDist(cod),{usuarios:toFirestore(dados.usuarios||[])},['usuarios']).catch(function(){});}catch(e){}}
+/* garante que o usuário logado fique marcado como "seguro" nos dados (mesmo se a nuvem sobrescrever) */
+function _authConfereUid(){
+  try{if(!_fbAuth||!_authUser||_authUser.isMaster||!_distId||_viewAs||!DB||!DB.usuarios)return;
+    var u=DB.usuarios.filter(function(x){return x.id===_authUser.id;})[0];
+    if(u&&(u.fbUid!==_fbAuth.uid||u.fbEmail!==_fbAuth.email)){u.fbUid=_fbAuth.uid;u.fbEmail=_fbAuth.email;saveDB();}
+  }catch(e){}
+}
+setInterval(_authConfereUid,8000);
 /* ---- login da distribuidora ---- */
 (function(){
   var _ld=loginDistribuidora;
@@ -6742,6 +6750,7 @@ async function segurancaAbrir(){
   c.appendChild(_el('div','font-size:13.5px;color:#334155;line-height:1.7;white-space:pre-line;','1. Abra console.firebase.google.com e entre no projeto '+fbCred().pid+'.\n2. Menu da esquerda: Criação (Build) → Authentication → botão "Vamos começar".\n3. Na aba "Método de login", clique em "E-mail/senha", ligue a primeira chave e clique em Salvar.'));
   tit('Passo 2 — Quem já está com o login seguro');
   var st=_el('div','font-size:13px;color:#64748B;','Verificando...');c.appendChild(st);
+  if(!ok)st.dataset.semGestor='1';
   tit('Passo 3 — Publicar as regras novas');
   if(!ok)c.appendChild(_el('div','font-size:13px;color:#92400E;','As regras aparecem aqui depois que o passo 1 estiver feito e você entrar de novo.'));
   else{
@@ -6753,18 +6762,21 @@ async function segurancaAbrir(){
   dlg('🔒 Segurança dos dados',c,bts);
   // passo 2: situação de cada usuário
   try{
+    var acsL=[];if(ok){var ac0=await fsGet('acessos?pageSize=300').catch(function(){return null;});acsL=((ac0&&ac0.documents)||[]).map(regParse);}
+    function acDe(cod,login){return acsL.filter(function(x){return (x.cod||'')===(cod||'')&&String(x.login||'').toLowerCase()===String(login||'').toLowerCase()&&x.ativo!==false;})[0];}
     var regs=(_mRegs||[]),lin=[],conhecidos={},pend=0,tot=0;
     for(var i=0;i<regs.length;i++){var r=regs[i];var d=await _distDados(r.id).catch(function(){return {};});
-      (d.usuarios||[]).forEach(function(u){tot++;if(u.fbUid)conhecidos[u.fbUid]=1;else pend++;lin.push({d:_nomeCurto(r),cod:r.id,u:u.nome||u.login,login:u.login,ok:!!u.fbUid});});}
-    var eq=await equipeLer().catch(function(){return [];});eq.forEach(function(u){tot++;if(u.fbUid)conhecidos[u.fbUid]=1;else pend++;lin.push({d:'Equipe do painel',u:u.nome,login:u.login,ok:!!u.fbUid});});
+      (d.usuarios||[]).forEach(function(u){tot++;var a=acDe(r.id,u.login);if(u.fbUid)conhecidos[u.fbUid]=1;if(a)conhecidos[a.id]=1;var seg=!!(u.fbUid||a);if(!seg)pend++;lin.push({d:_nomeCurto(r),cod:r.id,u:u.nome||u.login,login:u.login,ok:seg});});}
+    var eq=await equipeLer().catch(function(){return [];});eq.forEach(function(u){tot++;var a=acDe('',u.login);if(u.fbUid)conhecidos[u.fbUid]=1;if(a)conhecidos[a.id]=1;var seg=!!(u.fbUid||a);if(!seg)pend++;lin.push({d:'Equipe do painel',u:u.nome,login:u.login,ok:seg});});
     st.innerHTML='';
     st.appendChild(_el('div','font-size:13.5px;color:#0F2044;margin-bottom:6px;font-weight:700;',(tot-pend)+' de '+tot+' acessos já estão no login seguro.'));
     var bx=_el('div','border:1px solid #E2E8F0;border-radius:10px;max-height:200px;overflow:auto;');
     lin.forEach(function(x,k){var l=_el('div','display:flex;justify-content:space-between;gap:8px;padding:7px 10px;font-size:12.5px;'+(k?'border-top:1px solid #F1F5F9;':''));l.appendChild(_el('span','color:#334155;min-width:0;',x.d+' · '+x.u+' ('+x.login+')'));l.appendChild(_el('span','white-space:nowrap;font-weight:700;color:'+(x.ok?'#16A34A':'#D97706')+';',x.ok?'✅ seguro':'⏳ falta entrar'));bx.appendChild(l);});
     st.appendChild(bx);
-    if(pend)st.appendChild(_el('div','font-size:12px;color:#92400E;margin-top:6px;line-height:1.5;','Quem está "falta entrar" passa para o login seguro sozinho na próxima vez que entrar no sistema. Se alguém não puder entrar antes de você publicar as regras, use "Resetar senha" no menu ⋯ da distribuidora (ou edite o usuário da equipe com uma senha nova).'));
-    if(ok){var ac=await fsGet('acessos?pageSize=300').catch(function(){return null;});
-      var estranhos=((ac&&ac.documents)||[]).map(regParse).filter(function(x){return !conhecidos[x.id]&&!(x.papel==='equipe'&&eq.some(function(e){return e.id===x.eqId;}));});
+    if(pend&&!ok)st.appendChild(_el('div','font-size:12.5px;color:#991B1B;font-weight:700;margin-top:6px;line-height:1.5;','Enquanto o passo 1 não estiver feito (e você não entrar de novo como gestor), ninguém consegue passar para o login seguro.'));
+    if(pend)st.appendChild(_el('div','font-size:12px;color:#92400E;margin-top:6px;line-height:1.5;','Quem está "falta entrar" passa para o login seguro sozinho na próxima vez que entrar no sistema (se a pessoa já entrou e continua aqui, peça para ela atualizar a página com Ctrl + F5, ou fechar e abrir o app, e entrar de novo). Se alguém não puder entrar antes de você publicar as regras, use "Resetar senha" no menu ⋯ da distribuidora (ou edite o usuário da equipe com uma senha nova).'));
+    if(ok){
+      var estranhos=acsL.filter(function(x){return !conhecidos[x.id]&&!(x.papel==='equipe'&&eq.some(function(e){return e.id===x.eqId;}));});
       if(estranhos.length){var w=_el('div','background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:10px;padding:10px 12px;font-size:12.5px;margin-top:8px;line-height:1.5;','⚠️ '+estranhos.length+' acesso(s) que não pertencem a nenhum usuário conhecido: '+estranhos.map(function(x){return (x.login||'?')+(x.cod?' / '+x.cod:'');}).join(', ')+'. ');
         var b=_el('button','margin-top:6px;','Remover esses acessos');b.className='btn bd bsm';b.onclick=async function(){for(var z=0;z<estranhos.length;z++){try{await fsDelete('acessos/'+estranhos[z].id);}catch(e){}}w.textContent='✅ Removidos.';};w.appendChild(b);st.appendChild(w);}
     }
