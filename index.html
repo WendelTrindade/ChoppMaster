@@ -957,7 +957,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão com o Firebase</a></div>
-    <div class="login-version">ChoppMaster ERP v3.7 · 18/11</div>
+    <div class="login-version">ChoppMaster ERP v3.8 · 18/11</div>
   </div>
 </div>
 
@@ -1056,6 +1056,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
               <span id="pdsc" style="color:#166534;font-weight:700;min-width:60px;text-align:right;">R$ 0,00</span>
             </div>
           </div>
+          <div id="pjur-l" style="display:none;justify-content:space-between;font-size:13px;color:#92400e;margin-top:8px;"><span>💳 Juros do parcelamento (<span id="pjur-n"></span>):</span><span id="pjur" style="font-weight:700;">R$ 0,00</span></div>
           <div style="display:flex;justify-content:space-between;font-size:17px;font-weight:800;color:var(--dk);border-top:1px solid #e8d8b0;padding-top:8px;margin-top:8px;"><span>TOTAL:</span><span id="ptot">R$ 0,00</span></div>
         </div>
       </div>
@@ -1066,6 +1067,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
         <div class="fi"><label>Entrada / Sinal R$</label><input type="text" id="ped-sig" placeholder="0,00" oninput="calcTot()"></div>
         <div class="fi"><label>Vencimento do Saldo</label><input type="date" id="ped-venc"></div>
       </div>
+      <div class="fi" id="ped-parc-wrap" style="display:none;"><label>💳 Parcelas no cartão de crédito</label><select id="ped-parc"></select></div>
       <div class="fi"><label>Modelo do pedido impresso</label><select id="ped-modelo"><option value="termos">📑 Com termos (responsabilidade da venda e cláusulas de locação)</option><option value="simples">📄 Simples (só dados, itens e total)</option></select></div>
       <div class="fi"><label>Observações</label><textarea id="ped-obs" placeholder="Informações adicionais..."></textarea></div>
     </div>
@@ -1668,6 +1670,7 @@ function salvarPed(imp){
   var sub=_itens.reduce(function(s,it){return s+(it.qty||1)*(it.preco||0);},0);
   var desc=getRaw('ped-desc')||0;
   var tot=Math.max(0,sub-desc);
+  var _pc=parcDoModal(tot);tot=Math.round((tot+_pc.juros)*100)/100;
   var sig=getRaw('ped-sig')||0;
   var isEd=!!_editId;var ped;
   if(isEd){
@@ -1676,7 +1679,7 @@ function salvarPed(imp){
     ped.devolucao=document.getElementById('ped-dev').value;ped.local=document.getElementById('ped-loc').value;ped.horaEntrega=document.getElementById('ped-hora').value||'';
     ped.pgto=document.getElementById('ped-pgto').value;ped.vencSaldo=document.getElementById('ped-venc').value;
     ped.obs=document.getElementById('ped-obs').value;ped.itens=JSON.parse(JSON.stringify(_itens));
-    ped.subtotal=sub;ped.desconto=desc;ped.total=tot;ped.modelo=document.getElementById('ped-modelo').value;
+    ped.subtotal=sub;ped.desconto=desc;ped.total=tot;ped.parcelas=_pc.n;ped.juros=_pc.juros;ped.modelo=document.getElementById('ped-modelo').value;
   } else {
     var num=String((DB.pedidos.length||0)+1).padStart(4,'0');
     ped={id:uid(),num:num,clienteId:cId,data:document.getElementById('ped-dt').value||hj(),entrega:document.getElementById('ped-ent').value,devolucao:document.getElementById('ped-dev').value,local:document.getElementById('ped-loc').value,horaEntrega:document.getElementById('ped-hora').value||'',pgto:document.getElementById('ped-pgto').value,vencSaldo:document.getElementById('ped-venc').value,obs:document.getElementById('ped-obs').value,itens:JSON.parse(JSON.stringify(_itens)),subtotal:sub,desconto:desc,total:tot,pagamentos:[],status:'pendente'};
@@ -1684,7 +1687,7 @@ function salvarPed(imp){
       ped.pagamentos.push({id:uid(),valor:sig,forma:ped.pgto,data:hj(),obs:'Entrada/Sinal'});
       _itens.filter(function(it){return it.tipo==='produto'&&it.refId;}).forEach(function(it){var pr=DB.produtos.find(function(x){return x.id===it.refId;});if(pr)pr.estoque=Math.max(0,(pr.estoque||0)-(it.qty||1));});
     }
-    ped.modelo=document.getElementById('ped-modelo').value;
+    ped.modelo=document.getElementById('ped-modelo').value;ped.parcelas=_pc.n;ped.juros=_pc.juros;
     DB.pedidos.unshift(ped);
   }
   ped.status=getStatus(ped);if(ped.webId&&_distId){webSyncPedido(ped).catch(function(){});}
@@ -4734,7 +4737,7 @@ function htmlPedSimples(p){
   var cond=sl<=0?'Pago':(pgT>0?'Entrada + saldo':(p.vencSaldo?'A prazo':'À vista'));
   var entregaStr=(p.entrega?dBr(p.entrega):'')+(p.horaEntrega?' '+p.horaEntrega:'');
   var esq=L('Cliente......:',cli.nome||'—',true)+L('CPF/CNPJ.....:',cli.doc||'')+L('Fones/e-mail.:',[cli.tel,cli.email].filter(Boolean).join(' / '))+L('Endereço.....:',endCli)+L('Local entrega:',p.local||'',true)+L('Vendedor.....:',cfg.responsavel||cfg.empresa||'')+L('Observações..:',p.obs||'');
-  var dir=L('Emissão....:',dBr(p.data))+L('Entrega....:',entregaStr,true)+(p.devolucao?L('Devolução..:',dBr(p.devolucao)):'')+L('Forma cob..:',pgtoNome(p.pgto),true)+L('Cond. pagto:',cond)+L('Recebido...:','R$ '+n2(pgT))+L('Saldo......:','R$ '+n2(sl),sl>0);
+  var dir=L('Emissão....:',dBr(p.data))+L('Entrega....:',entregaStr,true)+(p.devolucao?L('Devolução..:',dBr(p.devolucao)):'')+L('Forma cob..:',pgtoTexto(p),true)+L('Cond. pagto:',cond)+L('Recebido...:','R$ '+n2(pgT))+L('Saldo......:','R$ '+n2(sl),sl>0);
   var venc=p.vencSaldo||p.entrega||p.data;
   var itens=(p.itens||[]),qtdT=itens.reduce(function(s,i){return s+(parseFloat(i.qty)||0);},0);
   var th='padding:2px 4px;font-weight:400;text-align:left;border-bottom:1px dashed #555;';
@@ -4750,7 +4753,7 @@ function htmlPedSimples(p){
   +'<tr><td style="padding:1px 4px;"><b>'+E(p.num||'')+'/1-1</b></td><td><b>'+dBr(venc)+'</b></td><td style="text-align:right;"><b>'+n2(sl>0?sl:p.total)+'</b></td><td></td></tr></table>'
   +hr+'<table style="width:100%;border-collapse:collapse;font-size:10.5px;"><thead><tr><th style="'+th+'width:52px;">Código</th><th style="'+th+'">Descrição</th><th style="'+th+'width:44px;">Unid.</th><th style="'+th+'width:44px;text-align:right;">Qtde.</th><th style="'+th+'width:78px;text-align:right;">Vlr. unit.</th><th style="'+th+'width:84px;text-align:right;">Vlr. total</th></tr></thead><tbody>'+rows+'</tbody></table>'
   +hr+'<div style="display:flex;justify-content:space-between;font-weight:700;"><span>'+itens.length+' itens</span><span>Total unid.:'+qtdT+'</span><span>'+n2(sub)+'</span></div>'
-  +'<div style="text-align:right;">Desconto: '+n2(p.desconto||0)+'</div>'
+  +'<div style="text-align:right;">Desconto: '+n2(p.desconto||0)+(p.juros?' &nbsp; Juros parcelamento: '+n2(p.juros):'')+'</div>'
   +'<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:22px;gap:12px;">'
   +'<span style="font-size:9px;">ChoppMaster</span>'
   +'<div style="text-align:center;flex:1;"><div style="border-top:1px dashed #333;margin:0 10px;"></div>Ass. vendedor</div>'
@@ -4795,7 +4798,7 @@ function htmlPedTermos(p){
   +(hM?'<div>'+rot('Devolução','#1e40af')+'<div style="font-size:11px;font-weight:800;color:#0f2044;">'+(p.devolucao?dBr(p.devolucao):'A combinar')+'</div></div>':'')+'</div>'
   +'<div style="margin-top:3px;">'+rot('Endereço / local da entrega','#1e40af')+'<div style="font-size:11px;font-weight:800;color:#0f2044;">'+E(p.local||endCli||'—')+'</div></div></div>'
   +'<div style="flex:2;border:2px solid #059669;background:#ecfdf5;border-radius:6px;padding:6px 9px;">'+rot('💳 Pagamento','#065f46')
-  +'<div style="font-size:12px;font-weight:900;color:#065f46;">'+E(pgtoNome(p.pgto))+'</div>'
+  +'<div style="font-size:12px;font-weight:900;color:#065f46;">'+E(pgtoTexto(p))+'</div>'
   +'<div style="font-size:8.5px;color:#065f46;font-weight:700;">'+E(cond)+'</div>'
   +'<div style="display:flex;justify-content:space-between;font-size:8.5px;margin-top:3px;"><span>Total</span><b>'+fm(p.total)+'</b></div>'
   +'<div style="display:flex;justify-content:space-between;font-size:8.5px;"><span>Recebido</span><b style="color:#059669;">'+fm(pgT)+'</b></div>'
@@ -4803,7 +4806,7 @@ function htmlPedTermos(p){
   +(cfg.pix&&sl>0?'<div style="font-size:8px;margin-top:2px;color:#065f46;"><b>PIX:</b> '+E(cfg.pix)+'</div>':'')+'</div></div>'
   /* itens */
   +'<table style="width:100%;border-collapse:collapse;font-size:8.5px;margin-bottom:4px;"><thead><tr style="background:#0f2044;color:#fff;"><th style="padding:4px 6px;text-align:left;font-size:7.5px;">ITEM</th><th style="padding:4px 6px;font-size:7.5px;width:36px;">QTD</th><th style="padding:4px 6px;text-align:right;font-size:7.5px;width:70px;">UNITÁRIO</th><th style="padding:4px 6px;text-align:right;font-size:7.5px;width:76px;">TOTAL</th></tr></thead><tbody>'+itH+'</tbody></table>'
-  +'<div style="display:flex;justify-content:flex-end;gap:14px;font-size:8.5px;margin-bottom:5px;">'+(p.desconto?'<span>Subtotal '+fm(sub)+'</span><span style="color:#059669;">Desconto − '+fm(p.desconto)+'</span>':'')+'<span style="font-size:12px;font-weight:900;color:#0f2044;">TOTAL '+fm(p.total)+'</span></div>'
+  +'<div style="display:flex;justify-content:flex-end;gap:14px;font-size:8.5px;margin-bottom:5px;">'+(p.juros?'<span style="color:#92400e;">Juros do parcelamento + '+fm(p.juros)+'</span>':'')+(p.desconto?'<span>Subtotal '+fm(sub)+'</span><span style="color:#059669;">Desconto − '+fm(p.desconto)+'</span>':'')+'<span style="font-size:12px;font-weight:900;color:#0f2044;">TOTAL '+fm(p.total)+'</span></div>'
   +(p.obs?'<div style="background:#fffbeb;border-left:3px solid #f59e0b;padding:4px 8px;margin-bottom:5px;font-size:8.5px;"><b>Obs.:</b> '+E(p.obs)+'</div>':'')
   /* termos lado a lado */
   +'<div style="display:flex;gap:6px;margin-bottom:6px;">'+clausulas(tm.venda,'Termo de responsabilidade — venda','#475569','#f8fafc','#e2e8f0')+((hM||locSempre(cfg))?clausulas(tm.loc,'Cláusulas de locação — máquinas','#92400e','#fffbeb','#fde68a'):'')+'</div>'
@@ -4846,7 +4849,7 @@ function verPed(id){
   +'<div style="background:#eff6ff;border:2px solid #2563eb;border-radius:10px;padding:8px 10px;grid-column:1/-1;"><div style="font-size:10px;font-weight:800;color:#1e40af;text-transform:uppercase;">📍 Local da entrega</div><div style="font-size:14px;font-weight:800;color:#0f2044;">'+E(p.local||'—')+'</div></div>'
   +'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;"><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;">Entrega</div><div style="font-weight:800;">'+dBr(p.entrega)+(p.horaEntrega?' às '+E(p.horaEntrega):'')+'</div></div>'
   +(hM?'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;"><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;">Devolução</div><div style="font-weight:800;">'+dBr(p.devolucao)+'</div></div>':'')
-  +'<div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:10px;padding:8px 10px;"><div style="font-size:10px;font-weight:700;color:#065f46;text-transform:uppercase;">Pagamento</div><div style="font-weight:800;color:#065f46;">'+E(pgtoNome(p.pgto))+'</div></div>'
+  +'<div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:10px;padding:8px 10px;"><div style="font-size:10px;font-weight:700;color:#065f46;text-transform:uppercase;">Pagamento</div><div style="font-weight:800;color:#065f46;">'+E(pgtoTexto(p))+'</div></div>'
   +'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;"><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;">Pedido feito em</div><div style="font-weight:800;">'+dBr(p.data)+'</div></div></div>'
   +'<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:12px;"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;"><div style="font-size:12px;font-weight:800;color:var(--dk);">🚚 Andamento da entrega: <span style="color:#2563eb;">'+E(entStNome(est))+'</span></div>'
   +'<button class="btn bsm bgh" onclick="abrirAcompanhamento(\''+p.id+'\')">📍 Link de acompanhamento</button></div>'
@@ -4912,7 +4915,7 @@ function _resumoPed(p){
   var cfg=DB.config||{},c=DB.clientes.find(function(x){return x.id===p.clienteId;})||{},sl=getSaldo(p);
   return '🍺 *'+(cfg.empresa||'ChoppMaster')+'* — Pedido nº '+p.num+'\n\nCliente: '+(c.nome||'')+'\n📍 Entrega: '+(p.local||'a combinar')+'\n📅 '+(p.entrega?dBr(p.entrega):'Data a combinar')+(p.horaEntrega?' às '+p.horaEntrega:'')+'\n\n'
    +(p.itens||[]).map(function(i){return '• '+i.qty+'× '+_nomeItem(i)+' — '+R$((i.qty||0)*(i.preco||0));}).join('\n')
-   +'\n\n*Total: '+R$(p.total)+'*'+(sl>0&&sl<p.total?'\nSaldo a pagar: '+R$(sl):'')+'\nPagamento: '+pgtoNome(p.pgto)+(cfg.pix&&sl>0?'\nPIX: '+cfg.pix:'');
+   +'\n\n*Total: '+R$(p.total)+'*'+(sl>0&&sl<p.total?'\nSaldo a pagar: '+R$(sl):'')+'\nPagamento: '+pgtoTexto(p)+(cfg.pix&&sl>0?'\nPIX: '+cfg.pix:'');
 }
 function enviarPedWhats(id){
   var p=DB.pedidos.find(function(x){return x.id===id;});if(!p)return;var c=DB.clientes.find(function(x){return x.id===p.clienteId;})||{};
@@ -4973,7 +4976,7 @@ var _catTimer=null;
 function catalogoDados(){
   var cfg=DB.config||{},cc=calcCfg(cfg);
   return {empresa:cfg.empresa||'ChoppMaster',tel:cfg.tel||'',cor:corPedido(cfg),slogan:cfg.slogan||'',logo:(cfg.logo&&cfg.logo.length<90000)?cfg.logo:'',pix:cfg.pix||'',
-    calcLph:cc.lph,calcMargem:cc.margem,calcHoras:cc.horas,formas:formasCfg(cfg).map(function(x){return x[0];}),atualizadoEm:new Date().toISOString(),
+    calcLph:cc.lph,calcMargem:cc.margem,calcHoras:cc.horas,parcMax:parcCfg(cfg).max,parcSemJuros:parcCfg(cfg).semJuros,parcJuros:parcCfg(cfg).juros,formas:formasCfg(cfg).map(function(x){return x[0];}),atualizadoEm:new Date().toISOString(),
     produtos:(DB.produtos||[]).filter(function(p){return p.ativo!==false&&p.nome;}).map(function(p){return {id:p.id,nome:p.nome,un:p.un||'',cat:p.cat||'',preco:parseFloat(p.precoVenda||p.pvv)||0,litros:litrosDe(p)};}),
     maquinas:(DB.maquinas||[]).filter(function(m){return m.nome;}).map(function(m){return {id:m.id,nome:m.nome,preco:parseFloat(m.evento||m.diaria)||0};})};
 }
@@ -5033,7 +5036,7 @@ function webCardPedido(w){
   var t=_el('div','display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;');t.appendChild(_el('strong','font-size:14px;color:#0F2044;',(w.nome||'Cliente')+' · '+(w.tel||'')));t.appendChild(_el('strong','font-size:14px;color:#065F46;',R$(w.total)));c.appendChild(t);
   c.appendChild(_el('div','font-size:13px;color:#1E40AF;font-weight:700;margin-top:4px;','📅 '+dBr(w.entrega)+(w.hora?' às '+w.hora:'')+'  ·  📍 '+(w.local||'')));
   c.appendChild(_el('div','font-size:12px;color:#334155;margin-top:3px;',(w.itens||[]).map(function(i){return i.qty+'× '+i.nome;}).join(', ')));
-  c.appendChild(_el('div','font-size:12px;color:#64748B;margin-top:2px;','💳 '+pgtoNome(w.pgto)+(w.pessoas?'  ·  🧮 '+w.pessoas+' pessoas, '+w.horas+' h':'')+(w.obs?'  ·  Obs.: '+w.obs:'')+'  ·  Enviado '+(w.criadoEm?new Date(w.criadoEm).toLocaleString('pt-BR'):'')));
+  c.appendChild(_el('div','font-size:12px;color:#64748B;margin-top:2px;','💳 '+pgtoNome(w.pgto)+((w.parcelas||1)>1?' '+w.parcelas+'x':'')+(w.pessoas?'  ·  🧮 '+w.pessoas+' pessoas, '+w.horas+' h':'')+(w.obs?'  ·  Obs.: '+w.obs:'')+'  ·  Enviado '+(w.criadoEm?new Date(w.criadoEm).toLocaleString('pt-BR'):'')));
   var ac=_el('div','display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;');
   var b1=_el('button','','✅ Confirmar e criar pedido');b1.className='btn bk bsm';b1.onclick=function(){webAprovarPedido(w);};ac.appendChild(b1);
   var b2=_el('button','','💬 WhatsApp');b2.className='btn bs bsm';b2.onclick=function(){_abreWa(w.tel,'Olá '+(w.nome||'')+'! Recebemos o seu pedido online. ');};ac.appendChild(b2);
@@ -5047,9 +5050,10 @@ function webAprovarPedido(w){
   else{if(!cli.doc&&w.doc)cli.doc=w.doc;if(!cli.email&&w.email)cli.email=w.email;if(!cli.end&&w.local)cli.end=w.local;}
   var itens=(w.itens||[]).map(function(i){var preco=parseFloat(i.preco)||0;if(i.tipo==='produto'){var pr=DB.produtos.find(function(x){return x.id===i.refId;});if(pr)preco=pr.precoVenda||pr.pvv||preco;}else{var mq=DB.maquinas.find(function(x){return x.id===i.refId;});if(mq)preco=mq.evento||mq.diaria||preco;}return {_id:uid(),tipo:i.tipo,refId:i.refId,qty:parseFloat(i.qty)||1,preco:preco};});
   var sub=itens.reduce(function(s,i){return s+i.qty*i.preco;},0),agora=new Date().toISOString();
+  var nPar=(w.pgto==='cartao_credito'?parseInt(w.parcelas,10)||1:1),jur=nPar>1?((parcOpcoes(sub,parcCfg())[Math.min(nPar,parcCfg().max)-1]||{juros:0}).juros):0;
   var num=String((DB.pedidos.length||0)+1).padStart(4,'0');
   var obs=[w.obs,w.ref?'Referência: '+w.ref:'',w.pessoas?'Calculadora do cliente: '+w.pessoas+' pessoas, '+w.horas+' h':''].filter(Boolean).join(' | ');
-  var ped={id:uid(),num:num,clienteId:cli.id,data:hj(),entrega:w.entrega||'',horaEntrega:w.hora||'',devolucao:w.devolucao||'',local:w.local||'',pgto:w.pgto||'a_combinar',vencSaldo:'',obs:obs,itens:itens,subtotal:sub,desconto:0,total:sub,pagamentos:[],status:'pendente',origem:'online',webId:w.id,webOrigem:true,modelo:modeloPadrao(),
+  var ped={id:uid(),num:num,clienteId:cli.id,data:hj(),entrega:w.entrega||'',horaEntrega:w.hora||'',devolucao:w.devolucao||'',local:w.local||'',pgto:w.pgto||'a_combinar',vencSaldo:'',obs:obs,itens:itens,subtotal:sub,desconto:0,total:Math.round((sub+jur)*100)/100,parcelas:nPar,juros:jur,pagamentos:[],status:'pendente',origem:'online',webId:w.id,webOrigem:true,modelo:modeloPadrao(),
     entregaSt:'confirmado',entregaHist:[{st:'aguardando',em:w.criadoEm||agora},{st:'confirmado',em:agora}]};
   ped.status=getStatus(ped);DB.pedidos.unshift(ped);saveDB();
   w.status='confirmado';
@@ -5099,7 +5103,7 @@ function webSyncPedido(p){
   if(!p.webId){p.webId=reciboToken();saveDB();}
   var cfg=DB.config||{},cli=DB.clientes.find(function(x){return x.id===p.clienteId;})||{};
   var snap={empresa:cfg.empresa||'ChoppMaster',tel:cfg.tel||'',cor:corPedido(cfg),num:p.num||'',cliente:cli.nome||'',local:p.local||'',entrega:p.entrega||'',hora:p.horaEntrega||'',devolucao:p.devolucao||'',
-    pgto:pgtoNome(p.pgto),total:p.total||0,saldo:getSaldo(p),maquinas:(p.itens||[]).some(function(i){return i.tipo==='maquina';}),
+    pgto:pgtoTexto(p),total:p.total||0,saldo:getSaldo(p),maquinas:(p.itens||[]).some(function(i){return i.tipo==='maquina';}),
     itens:(p.itens||[]).map(function(i){return {n:_nomeItem(i),q:i.qty,t:(i.qty||0)*(i.preco||0)};})};
   var o={status:entStAtual(p),hist:p.entregaHist||[],snap:JSON.stringify(snap),pedidoId:p.id,pedNum:p.num||'',atualizadoEm:new Date().toISOString()};
   if(!p.webOrigem){o.tipo='rastreio';o.nome=cli.nome||'';o.tel=cli.tel||'';}
@@ -5184,12 +5188,17 @@ function pubPedido(wrap,cod,cat){
   var iLocal=campo(ce,'Endereço da entrega (rua, número, bairro, cidade)','text','Ex.: Rua 10, nº 25, Setor Central, Trindade',true);
   var iRef=campo(ce,'Ponto de referência','text','Ex.: portão azul, ao lado da padaria');
   var g=_el('div','display:grid;grid-template-columns:1fr 1fr;gap:8px;');ce.appendChild(g);
-  var iData=campo(g,'Data da entrega','date','',true);iData.min=_hojeLocal();var iHora=campo(g,'Horário sugerido','time','',true);
+  var iData=campo(g,'Data da entrega','date','',true);iData.min=_hojeLocal();var iHora=campo(g,'Horário sugerido','text','',true);iHora.id='pub-hora';horaSelMontar('pub-hora','padding:11px 6px;border:1px solid #CBD5E1;border-radius:10px;font-size:15px;background:#fff;');
   var wDev=_el('div','display:none;');ce.appendChild(wDev);var iDev=campo(wDev,'Data para recolher a chopeira','date','');iDev.min=_hojeLocal();
   var cpg=_pubCard(abaP,'💳 Forma de pagamento');var sPg=_el('select','width:100%;padding:11px;border:1px solid #CBD5E1;border-radius:10px;font-size:15px;background:#fff;');
   var fl=FORMAS_PGTO.filter(function(x){return (cat.formas||['pix','dinheiro','cartao_debito','cartao_credito']).indexOf(x[0])>=0;});var o0=document.createElement('option');o0.value='';o0.textContent='Escolha...';sPg.appendChild(o0);
   fl.forEach(function(x){var o=document.createElement('option');o.value=x[0];o.textContent=x[1];sPg.appendChild(o);});cpg.appendChild(sPg);
   if(cat.pix)cpg.appendChild(_el('div','font-size:12px;color:#065F46;margin-top:6px;','Chave PIX: '+cat.pix));
+  var pcc=parcCfg({parcMax:cat.parcMax,parcSemJuros:cat.parcSemJuros,parcJuros:cat.parcJuros});
+  var wPar=_el('div','display:none;margin-top:10px;');wPar.appendChild(_el('label','display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:4px;','Parcelas no cartão'));
+  var sPar=_el('select','width:100%;padding:11px;border:1px solid #CBD5E1;border-radius:10px;font-size:15px;background:#fff;');wPar.appendChild(sPar);cpg.appendChild(wPar);
+  sPg.onchange=function(){calcTotal();};sPar.onchange=function(){calcTotal();};
+  function parcSel(base){var ops=parcOpcoes(base,pcc),cur=parseInt(sPar.value,10)||1;if(cur>ops.length)cur=ops.length;sPar.innerHTML='';ops.forEach(function(o){var op=document.createElement('option');op.value=o.n;op.textContent=parcRotulo(o);if(o.n===cur)op.selected=true;sPar.appendChild(op);});return sPg.value==='cartao_credito'?ops[cur-1]:null;}
   var cd=_pubCard(abaP,'👤 Seus dados');
   var iNome=campo(cd,'Nome completo','text','',true),iTel=campo(cd,'WhatsApp com DDD','tel','(62) 99999-0000',true),iDoc=campo(cd,'CPF ou CNPJ','text','Opcional'),iObs=campo(cd,'Observação','textarea','Ex.: festa de aniversário, precisa de copos, etc.');
   iTel.addEventListener('input',function(){maskPortalTel(iTel);});
@@ -5198,10 +5207,11 @@ function pubPedido(wrap,cod,cat){
   /* barra fixa com total */
   var bar=_el('div','position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #E2E8F0;padding:10px 14px;z-index:100000;box-shadow:0 -4px 14px rgba(0,0,0,.08);');
   var bi=_el('div','max-width:560px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;');bar.appendChild(bi);
-  var tb=_el('div','');tb.appendChild(_el('div','font-size:11px;color:#64748B;','Total estimado'));totEl=_el('div','font-size:20px;font-weight:900;color:#0F2044;','R$ 0,00');tb.appendChild(totEl);bi.appendChild(tb);
+  var tb=_el('div','');tb.appendChild(_el('div','font-size:11px;color:#64748B;','Total estimado'));totEl=_el('div','font-size:20px;font-weight:900;color:#0F2044;','R$ 0,00');tb.appendChild(totEl);var totPar=_el('div','font-size:12px;font-weight:700;color:#475569;','');tb.appendChild(totPar);bi.appendChild(tb);
   var bEnv=_el('button','padding:13px 20px;border:none;border-radius:12px;background:#16A34A;color:#fff;font-weight:800;font-size:15px;cursor:pointer;','Enviar pedido');bi.appendChild(bEnv);document.body.appendChild(bar);
   function itensSel(){var r=[];prods.forEach(function(x){var n=qtd['produto|'+x.id]||0;if(n>0)r.push({tipo:'produto',refId:x.id,nome:x.nome,qty:n,preco:x.preco||0});});maqs.forEach(function(x){var n=qtd['maquina|'+x.id]||0;if(n>0)r.push({tipo:'maquina',refId:x.id,nome:x.nome,qty:n,preco:x.preco||0});});return r;}
-  function calcTotal(){var it=itensSel();totEl.textContent=R$(it.reduce(function(s,i){return s+i.qty*i.preco;},0));wDev.style.display=it.some(function(i){return i.tipo==='maquina';})?'':'none';}
+  var parcAtual=null;
+  function calcTotal(){var it=itensSel(),base=it.reduce(function(s,i){return s+i.qty*i.preco;},0);wPar.style.display=sPg.value==='cartao_credito'?'':'none';parcAtual=parcSel(base);totEl.textContent=R$(base+(parcAtual?parcAtual.juros:0));totPar.textContent=parcAtual&&parcAtual.n>1?parcAtual.n+'x de '+R$(parcAtual.parc):'';wDev.style.display=it.some(function(i){return i.tipo==='maquina';})?'':'none';}
   /* calculadora */
   var cc1=_pubCard(abaC,'🧮 Calcule quanto chopp pedir');
   cc1.appendChild(_el('div','font-size:13px;color:#475569;line-height:1.5;margin-bottom:10px;','Informe quantas pessoas vão beber chopp e quanto tempo dura a festa. A conta usa '+String(cc.lph).replace('.',',')+' litro por pessoa a cada hora'+(cc.margem?', com '+cc.margem+'% de folga':'')+'.'));
@@ -5233,9 +5243,10 @@ function pubPedido(wrap,cod,cat){
     if(!sPg.value)return erro('Escolha a forma de pagamento.');
     if(nome.length<3)return erro('Informe o seu nome.');if(tel.replace(/\D/g,'').length<10)return erro('Informe o seu WhatsApp com DDD.');
     if(hp.value)return;
-    var id=reciboToken(),agora=new Date().toISOString(),tot=it.reduce(function(s,i){return s+i.qty*i.preco;},0);
-    var o={tipo:'pedido',status:'aguardando',criadoEm:agora,nome:nome,tel:tel,doc:sanitizeStr(iDoc.value.trim(),20),local:sanitizeStr(iLocal.value.trim(),160),ref:sanitizeStr(iRef.value.trim(),120),entrega:iData.value,hora:iHora.value,devolucao:iDev.value||'',pgto:sPg.value,obs:sanitizeStr(iObs.value.trim(),300),itens:it,total:tot,hist:[{st:'aguardando',em:agora}],
-      snap:JSON.stringify({empresa:cat.empresa,tel:cat.tel,cor:cat.cor,num:'',cliente:nome,local:iLocal.value.trim(),entrega:iData.value,hora:iHora.value,devolucao:iDev.value||'',pgto:pgtoNome(sPg.value),total:tot,saldo:tot,maquinas:it.some(function(i){return i.tipo==='maquina';}),itens:it.map(function(i){return {n:i.nome,q:i.qty,t:i.qty*i.preco};})})};
+    calcTotal();var id=reciboToken(),agora=new Date().toISOString(),tot=it.reduce(function(s,i){return s+i.qty*i.preco;},0),nPar=parcAtual?parcAtual.n:1,jur=parcAtual?parcAtual.juros:0;tot=Math.round((tot+jur)*100)/100;
+    var pgTxt=pgtoNome(sPg.value)+(nPar>1?' em '+nPar+'x de '+R$(parcAtual.parc)+(jur>0?' (juros '+R$(jur)+')':' sem juros'):'');
+    var o={tipo:'pedido',status:'aguardando',criadoEm:agora,nome:nome,tel:tel,doc:sanitizeStr(iDoc.value.trim(),20),local:sanitizeStr(iLocal.value.trim(),160),ref:sanitizeStr(iRef.value.trim(),120),entrega:iData.value,hora:iHora.value,devolucao:iDev.value||'',pgto:sPg.value,parcelas:nPar,juros:jur,obs:sanitizeStr(iObs.value.trim(),300),itens:it,total:tot,hist:[{st:'aguardando',em:agora}],
+      snap:JSON.stringify({empresa:cat.empresa,tel:cat.tel,cor:cat.cor,num:'',cliente:nome,local:iLocal.value.trim(),entrega:iData.value,hora:iHora.value,devolucao:iDev.value||'',pgto:pgTxt,total:tot,saldo:tot,maquinas:it.some(function(i){return i.tipo==='maquina';}),itens:it.map(function(i){return {n:i.nome,q:i.qty,t:i.qty*i.preco};})})};
     if(calcInfo){o.pessoas=calcInfo.pessoas;o.horas=calcInfo.horas;}
     bEnv.disabled=true;bEnv.textContent='Enviando...';
     webGravar(cod,id,fsFields(o)).then(function(){
@@ -5369,6 +5380,12 @@ function cfgPedidoOnlineHtml(cfg){
   h+='<div class="g2"><div class="fi"><label>Litros por pessoa, por hora</label><input type="number" id="cfg-calc-lph" min="0.1" step="0.05" value="'+E(cc.lph)+'"></div>';
   h+='<div class="fi"><label>Folga de seguran&ccedil;a (%)</label><input type="number" id="cfg-calc-mg" min="0" step="5" value="'+E(cc.margem)+'"></div></div>';
   h+='<div style="font-size:12px;color:#1e40af;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;margin-bottom:12px;line-height:1.6;">Calculadora do cliente: <b>pessoas &times; horas &times; litros por pessoa/hora + folga</b>. Exemplo com os valores acima: 40 pessoas &times; '+E(cc.horas)+' h &times; '+E(String(cc.lph).replace('.',','))+' L + '+E(cc.margem)+'% = <b>'+Math.ceil(40*cc.horas*cc.lph*(1+cc.margem/100)-1e-9)+' litros</b>. Para sugerir barris, coloque os litros no nome ou na unidade do produto (ex.: &quot;Chopp Pilsen 50L&quot;).</div>';
+  var pc=parcCfg(cfg),ex=parcOpcoes(1000,pc);
+  h+='<div style="border:1px solid #fde68a;background:#fffbeb;border-radius:10px;padding:12px;margin-bottom:14px;"><div style="font-size:13px;font-weight:800;color:#92400e;margin-bottom:8px;">&#128179; Cart&atilde;o de cr&eacute;dito parcelado</div><div class="g3">';
+  h+='<div class="fi"><label>M&aacute;ximo de parcelas</label><select id="cfg-parc-max">';for(var n=1;n<=12;n++)h+='<option value="'+n+'"'+(n===pc.max?' selected':'')+'>'+n+'x</option>';h+='</select></div>';
+  h+='<div class="fi"><label>Sem juros at&eacute;</label><select id="cfg-parc-sj">';for(var n2=1;n2<=12;n2++)h+='<option value="'+n2+'"'+(n2===pc.semJuros?' selected':'')+'>'+n2+'x</option>';h+='</select></div>';
+  h+='<div class="fi"><label>Juros ao m&ecirc;s (%)</label><input type="number" id="cfg-parc-j" min="0" step="0.01" value="'+E(pc.juros)+'"></div></div>';
+  h+='<div style="font-size:12px;color:#92400e;line-height:1.6;">Exemplo de uma venda de R$ 1.000,00: '+ex.filter(function(o,i){return i===0||i===ex.length-1||o.n===pc.semJuros||o.n===pc.semJuros+1;}).map(function(o){return escHtml(parcRotulo(o));}).join(' &middot; ')+'. Os juros entram no total do pedido e aparecem no pedido impresso. Salve as configura&ccedil;&otilde;es para atualizar o exemplo.</div></div>';
   h+='<div class="fi"><label>Formas de pagamento aceitas no pedido online</label><div style="display:flex;flex-wrap:wrap;gap:10px;">';
   FORMAS_PGTO.forEach(function(x){h+='<label style="display:flex;align-items:center;gap:6px;font-size:13px;text-transform:none;font-weight:600;"><input type="checkbox" class="cfg-fp" value="'+x[0]+'"'+(fs.indexOf(x[0])>=0?' checked':'')+'> '+x[1]+'</label>';});
   h+='</div></div>';
@@ -5382,6 +5399,7 @@ function cfgPedidoOnlineLer(){
   var ls=document.getElementById('cfg-loc-sempre');if(ls)DB.config.locacaoSempre=!!ls.checked;
   DB.config.calcHoras=parseFloat(v('cfg-calc-h'))||5;DB.config.calcLph=parseFloat(v('cfg-calc-lph'))||0.5;
   var mg=parseFloat(v('cfg-calc-mg'));DB.config.calcMargem=isNaN(mg)?10:mg;
+  var pmx=parseInt(v('cfg-parc-max'),10)||1,psj=Math.min(pmx,parseInt(v('cfg-parc-sj'),10)||1),pj=parseFloat(String(v('cfg-parc-j')).replace(',','.'));DB.config.parcMax=pmx;DB.config.parcSemJuros=psj;DB.config.parcJuros=isNaN(pj)?0:pj;
   var fp=[];document.querySelectorAll('.cfg-fp').forEach(function(c){if(c.checked)fp.push(c.value);});DB.config.formasPgto=fp.length?fp:['pix'];
 }
 
@@ -5406,6 +5424,57 @@ function nuvemSincronizar(){
   _fbDirty++;fbSave();toast('Enviando seus dados para a nuvem...','ok');
   var n=0,t=setInterval(function(){n++;if(!_fbSyncing&&!_fbDirty){clearInterval(t);toast('✓ Dados sincronizados com a nuvem.','ok');nuvemVerificar();}else if(n>40){clearInterval(t);toast('A nuvem não respondeu. Toque em "Testar conexão".','err');nuvemVerificar();}},500);
 }
+/* ===== PARCELAMENTO NO CARTÃO DE CRÉDITO ===== */
+function parcCfg(cfg){cfg=cfg||DB.config||{};var mx=parseInt(cfg.parcMax,10),sj=parseInt(cfg.parcSemJuros,10),j=parseFloat(cfg.parcJuros);
+  mx=isNaN(mx)?6:Math.min(24,Math.max(1,mx));sj=isNaN(sj)?1:Math.min(mx,Math.max(1,sj));j=isNaN(j)?2.99:Math.max(0,j);return {max:mx,semJuros:sj,juros:j};}
+/* opções de 1x até o máximo: até "sem juros" divide igual; acima disso usa juros ao mês (tabela Price, como as maquininhas) */
+function parcOpcoes(base,cc){
+  var r=[];base=Math.max(0,parseFloat(base)||0);
+  for(var n=1;n<=cc.max;n++){var parc,tot;
+    if(n<=cc.semJuros||cc.juros<=0){parc=base/n;tot=base;}
+    else{var i=cc.juros/100;parc=base*i/(1-Math.pow(1+i,-n));tot=parc*n;}
+    parc=Math.round(parc*100)/100;tot=Math.round(parc*n*100)/100;if(n<=cc.semJuros||cc.juros<=0)tot=Math.round(base*100)/100;
+    r.push({n:n,parc:parc,total:tot,juros:Math.max(0,Math.round((tot-base)*100)/100)});}
+  return r;
+}
+function parcRotulo(o){return o.n+'x de '+R$(o.parc)+(o.juros>0?' (total '+R$(o.total)+')':' sem juros');}
+function pgtoTexto(p){var t=pgtoNome(p.pgto);if(p.pgto==='cartao_credito'&&(p.parcelas||1)>1){var n=p.parcelas,par=(p.total||0)/n;t+=' em '+n+'x de '+R$(Math.round(par*100)/100)+((p.juros||0)>0?' (juros '+R$(p.juros)+')':' sem juros');}return t;}
+/* --- no cadastro do pedido (sistema) --- */
+function parcAtualizar(){
+  var pg=document.getElementById('ped-pgto'),w=document.getElementById('ped-parc-wrap'),s=document.getElementById('ped-parc');if(!pg||!w||!s)return;
+  var cred=pg.value==='cartao_credito';w.style.display=cred?'':'none';
+  var sub=(_itens||[]).reduce(function(a,it){return a+(it.qty||1)*(it.preco||0);},0),base=Math.max(0,sub-(getRaw('ped-desc')||0));
+  var cur=parseInt(s.value||s.getAttribute('data-n')||'1',10)||1,ops=parcOpcoes(base,parcCfg());if(cur>ops.length)cur=ops.length;
+  s.innerHTML='';ops.forEach(function(o){var op=document.createElement('option');op.value=o.n;op.textContent=parcRotulo(o);if(o.n===cur)op.selected=true;s.appendChild(op);});
+  var o=cred?ops[cur-1]:null,lj=document.getElementById('pjur-l');
+  if(lj){lj.style.display=o&&o.juros>0?'flex':'none';document.getElementById('pjur').textContent='+ '+R$(o?o.juros:0);document.getElementById('pjur-n').textContent=o?o.n+'x':'';}
+  var tt=document.getElementById('ptot');if(tt)tt.textContent=R$(base+(o?o.juros:0));
+}
+function parcDoModal(base){var pg=document.getElementById('ped-pgto'),s=document.getElementById('ped-parc');if(!pg||pg.value!=='cartao_credito'||!s)return {n:1,juros:0};var n=parseInt(s.value,10)||1,o=parcOpcoes(base,parcCfg())[n-1]||{n:1,juros:0};return {n:o.n,juros:o.juros};}
+/* --- seletor de horário próprio (o relógio do celular cortava o botão "Definir") --- */
+function horaSelMontar(inputId,estilo){
+  var inp=document.getElementById(inputId);if(!inp||inp._hs)return;inp._hs=true;inp.type='hidden';
+  var w=document.createElement('div');w.style.cssText='display:flex;gap:6px;align-items:center;';
+  var sh=document.createElement('select'),sm=document.createElement('select');[sh,sm].forEach(function(s){s.style.cssText='flex:1;min-width:0;'+(estilo||'');});
+  var o0=document.createElement('option');o0.value='';o0.textContent='--';sh.appendChild(o0);
+  for(var hh=0;hh<24;hh++){var o=document.createElement('option');o.value=String(hh).padStart(2,'0');o.textContent=String(hh).padStart(2,'0')+' h';sh.appendChild(o);}
+  ['00','10','15','20','30','40','45','50'].forEach(function(m){var o=document.createElement('option');o.value=m;o.textContent=m;sm.appendChild(o);});
+  function grava(){inp.value=sh.value?sh.value+':'+(sm.value||'00'):'';}
+  sh.onchange=grava;sm.onchange=grava;w.appendChild(sh);w.appendChild(_el('span','font-weight:800;',':'));w.appendChild(sm);
+  inp.parentNode.insertBefore(w,inp.nextSibling);inp._hsSync=function(){var v=String(inp.value||'');var m=v.match(/^(\d{1,2}):(\d{2})/);sh.value=m?String(m[1]).padStart(2,'0'):'';var mm=m?m[2]:'00';if(!Array.prototype.some.call(sm.options,function(x){return x.value===mm;})){var o=document.createElement('option');o.value=mm;o.textContent=mm;sm.appendChild(o);}sm.value=mm;};
+  inp._hsSync();return w;
+}
+function horaSelSync(id){var i=document.getElementById(id);if(i&&i._hsSync)i._hsSync();}
+(function(){
+  function ini(){
+    horaSelMontar('ped-hora');
+    var pg=document.getElementById('ped-pgto');if(pg)pg.addEventListener('change',parcAtualizar);
+    var ps=document.getElementById('ped-parc');if(ps)ps.addEventListener('change',parcAtualizar);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ini);else ini();
+  var _ct=calcTot;calcTot=function(){var r=_ct.apply(this,arguments);try{parcAtualizar();}catch(e){}return r;};
+  var _ap=abrirPed;abrirPed=function(id){var r=_ap.apply(this,arguments);try{var s=document.getElementById('ped-parc');var p=id?DB.pedidos.find(function(x){return x.id===id;}):null;if(s){s.value='';s.setAttribute('data-n',String((p&&p.parcelas)||1));}horaSelSync('ped-hora');parcAtualizar();if(s)s.removeAttribute('data-n');}catch(e){}return r;};
+})();
 /* ---- PAINEL DO GESTOR ---- */
 function _soGestor(){return _authUser&&_authUser.isMaster===true;}
 var _mTab='resumo',_mRegs=[],_mCad=[],_mFin=[],_mCal=null,_vFil={dist:'',per:'mes',de:'',ate:'',tipo:'',q:''},_fFil={per:'mes'};
