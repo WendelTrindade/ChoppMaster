@@ -642,6 +642,33 @@ a.ap-dt-nm:hover{text-decoration:underline;color:#2563EB;}
 .vd-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.vd-grid>*{min-width:0;border-radius:14px!important}.vd-grid .vd-full{grid-column:1/-1}
 @media(max-width:820px){.vd-grid{grid-template-columns:1fr}}
 @keyframes avIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+/* v4.7 — menu Mais */
+#mais-sheet{position:fixed;inset:0;background:rgba(15,32,68,.45);z-index:100000;display:flex;align-items:flex-end;justify-content:center;animation:msF .18s ease}
+.ms-box{background:#fff;width:100%;max-width:560px;border-radius:22px 22px 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -10px 40px rgba(0,0,0,.25);animation:msU .22s ease}
+.ms-alca{width:42px;height:5px;border-radius:9px;background:#CBD5E1;margin:0 auto 12px}
+.ms-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.ms-it{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 6px;border:1px solid #E2E8F0;border-radius:16px;background:#F8FAFC;cursor:pointer;font-family:inherit;transition:.15s}
+.ms-it:hover{background:#EFF6FF;border-color:#BFDBFE}
+.ms-it.on{background:#FEF3C7;border-color:#FCD34D}
+.ms-ic{font-size:24px;line-height:1}.ms-tx{font-size:12.5px;font-weight:700;color:#0F2044;text-align:center;line-height:1.2}
+.ms-sair .ms-tx{color:#DC2626}
+@media(min-width:769px){#mais-sheet{align-items:center}.ms-box{border-radius:22px;padding-bottom:18px}.ms-alca{display:none}}
+@keyframes msF{from{opacity:0}to{opacity:1}}@keyframes msU{from{transform:translateY(40px)}to{transform:none}}
+.ag-dlg .ag-bloco{box-shadow:none!important;border:none!important;padding:0!important;margin:0!important}
+/* v4.7 — ajustes para computador */
+@media(min-width:769px){
+  #tb{justify-content:flex-start!important;gap:18px}
+  #tb #tacts{margin-right:auto}
+  #tb #user-info{margin-left:auto}
+  #ct{max-width:1480px;width:100%;margin:0 auto;box-sizing:border-box;padding:24px 32px!important}
+  #sb .ni{transition:background .15s}
+  .tw table tbody tr,#ct table tbody tr{transition:background .12s}
+  #ct table tbody tr:hover{background:#F8FAFC}
+  .ag-d{cursor:pointer;transition:transform .12s,box-shadow .12s}
+  .ag-d:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(15,32,68,.12)}
+  #pg-config{max-width:1000px}
+}
+@media(min-width:769px) and (max-width:1100px){#ct{padding:18px 20px!important}}
 </style>
 </head>
 <body>
@@ -1155,7 +1182,7 @@ a.ap-dt-nm:hover{text-decoration:underline;color:#2563EB;}
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão com o Firebase</a></div>
-    <div class="login-version">ChoppMaster ERP v4.6 · 18/11</div>
+    <div class="login-version">ChoppMaster ERP v4.7 · 19/11</div>
   </div>
 </div>
 
@@ -6454,6 +6481,45 @@ setTimeout(function(){avisosVerificar(true);},2500);
   var _fl=fazerLogin;fazerLogin=async function(){var r=await _fl.apply(this,arguments);setTimeout(function(){avisosVerificar(true);},1500);return r;};
   var _rm=renderMaster;renderMaster=function(){var r=_rm.apply(this,arguments);
     try{var bx=document.querySelector('#pg-master .mbtns');if(bx&&gPode('avisos')&&!bx.querySelector('.av-btn')){var b=_el('button','','📢 Enviar aviso');b.className=bx.querySelector('.gs-hb')?'gs-hb av-btn':'btn bs av-btn';var pp=bx.querySelector('.pp-btn')||bx.querySelector('.eq-btn');if(pp)bx.insertBefore(b,pp);else bx.appendChild(b);}}catch(e){}
+    return r;};
+})();
+/* ===== v4.7 — MENU "MAIS" PRÓPRIO, DIA DA AGENDA EM JANELA, AJUSTES PARA COMPUTADOR ===== */
+function toggleBottomMore(){
+  var ex=document.getElementById('mais-sheet');if(ex){ex.remove();return;}
+  var itens=Array.prototype.slice.call(document.querySelectorAll('#sb .ni')).filter(function(e){
+    if(['nv-dashboard','nv-calendario','nv-pedidos','nv-financeiro'].indexOf(e.id)>=0)return false;
+    return e.style.display!=='none'&&getComputedStyle(e).display!=='none';});
+  var ov=_el('div','');ov.id='mais-sheet';
+  var bx=_el('div','');bx.className='ms-box';ov.appendChild(bx);
+  bx.appendChild(_el('div','','')).className='ms-alca';
+  bx.appendChild(_el('div','font-size:16px;font-weight:900;color:#0F2044;margin:0 4px 12px;','Mais opções'));
+  var gr=_el('div','');gr.className='ms-grid';bx.appendChild(gr);
+  itens.forEach(function(e){
+    var ic=e.querySelector('.ni-ic,.ic,span');var txt=e.textContent.trim().replace(/\s+/g,' '),icone='';
+    var m=txt.match(/^(\S+)\s+(.*)$/);if(m&&/[^\wÀ-ú]/.test(m[1])){icone=m[1];txt=m[2];}
+    var b=_el('button','');b.className='ms-it'+(e.classList.contains('on')?' on':'');
+    b.appendChild(_el('span','',icone||'•')).className='ms-ic';b.appendChild(_el('span','',txt)).className='ms-tx';
+    b.onclick=function(){ov.remove();e.click();var sb=document.getElementById('sb');if(sb&&sb.classList.contains('open'))toggleSB();};gr.appendChild(b);});
+  var sair=_el('button','');sair.className='ms-it ms-sair';sair.appendChild(_el('span','','🚪')).className='ms-ic';sair.appendChild(_el('span','','Sair')).className='ms-tx';
+  sair.onclick=function(){ov.remove();fazerLogout();};gr.appendChild(sair);
+  ov.onclick=function(ev){if(ev.target===ov)ov.remove();};
+  document.body.appendChild(ov);
+}
+/* Agenda: clicar no dia abre uma janela com tudo daquele dia */
+function agAbrirDia(iso){
+  _agData=iso;renderCalendario();
+  var d=new Date(iso+'T12:00:00'),tit=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][d.getDay()]+', '+_dbr(iso);
+  var c=_el('div','');c.className='ag-dlg';
+  try{c.innerHTML=agDiaHtml(iso,agEventos()[iso]||[],true);}catch(e){c.textContent='Não foi possível montar o dia.';}
+  var t=c.querySelector('.ag-dcab');if(t)t.remove();
+  var n=c.querySelectorAll('.ag-it').length;
+  var api=dlg('📅 '+tit+(n?' · '+n+(n>1?' itens':' item'):''),c,[{txt:'Fechar',cls:'bs',fn:function(a){a.fechar();}},{txt:'+ Novo pedido neste dia',cls:'bp',fn:function(a){a.fechar();abrirPed();setTimeout(function(){var e=document.getElementById('ped-ent');if(e){e.value=iso;try{e.dispatchEvent(new Event('change'));}catch(x){}}},200);}}]);
+  c.addEventListener('click',function(ev){var b=ev.target.closest('button,a,[onclick]');if(b&&b.tagName!=='A'&&/verPed|abrirPed|calAbreEvento|setEntregaSt/.test(b.getAttribute('onclick')||''))try{api.fechar();}catch(x){}});
+}
+(function(){
+  var _rc=renderCalendario;renderCalendario=function(){var r=_rc.apply(this,arguments);
+    try{Array.prototype.forEach.call(document.querySelectorAll('#pg-calendario [onclick*="_agData=\'"]'),function(b){var oc=b.getAttribute('onclick')||'',m=oc.match(/_agData='(\d{4}-\d{2}-\d{2})';renderCalendario\(\)/);
+      if(m&&!b.closest('.ag-vis,.ag-nav'))b.setAttribute('onclick',"agAbrirDia('"+m[1]+"')");});}catch(e){}
     return r;};
 })();
 /* ---- PAINEL DO GESTOR ---- */
