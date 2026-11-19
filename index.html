@@ -669,6 +669,15 @@ a.ap-dt-nm:hover{text-decoration:underline;color:#2563EB;}
   #pg-config{max-width:1000px}
 }
 @media(min-width:769px) and (max-width:1100px){#ct{padding:18px 20px!important}}
+.bs-lista{position:fixed;z-index:200500;background:#fff;border:1px solid #E2E8F0;border-radius:12px;box-shadow:0 12px 32px rgba(15,32,68,.18);overflow-y:auto;padding:4px}
+.bs-it{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer;font-size:13.5px;color:#0F2044}
+.bs-it.on,.bs-it:hover{background:#EFF6FF}
+.bs-it b{color:#1D4ED8;font-weight:800}
+.bs-ic{font-size:16px;flex:none;width:20px;text-align:center}
+.bs-tx{display:flex;flex-direction:column;min-width:0}.bs-tx>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bs-tx small{font-size:11px;color:#64748B;margin-top:1px}
+.bs-vz{padding:12px;font-size:13px;color:#94A3B8;text-align:center}
+.bs-inp{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Ccircle cx='7' cy='7' r='5'/%3E%3Cpath d='M11 11l4 4'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 10px center!important;padding-right:32px!important}
 </style>
 </head>
 <body>
@@ -1182,7 +1191,7 @@ a.ap-dt-nm:hover{text-decoration:underline;color:#2563EB;}
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão</a></div>
-    <div class="login-version">ChoppMaster ERP v5.4 · 19/11</div>
+    <div class="login-version">ChoppMaster ERP v5.5 · 19/11</div>
   </div>
 </div>
 
@@ -1277,7 +1286,7 @@ a.ap-dt-nm:hover{text-decoration:underline;color:#2563EB;}
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:12px;">
             <div style="font-size:13px;color:#166534;font-weight:600;">🏷 Desconto (R$):</div>
             <div style="display:flex;align-items:center;gap:8px;">
-              <input id="ped-desc" type="text" placeholder="0,00" oninput="calcTot()" style="border:1px solid #d8c8a8;border-radius:8px;padding:6px 10px;font-size:13px;background:#fffdf8;width:110px;text-align:right;">
+              <input id="ped-desc" type="text" placeholder="0,00" oninput="setTimeout(calcTot,0)" style="border:1px solid #d8c8a8;border-radius:8px;padding:6px 10px;font-size:13px;background:#fffdf8;width:110px;text-align:right;">
               <span id="pdsc" style="color:#166534;font-weight:700;min-width:60px;text-align:right;">R$ 0,00</span>
             </div>
           </div>
@@ -1289,7 +1298,7 @@ a.ap-dt-nm:hover{text-decoration:underline;color:#2563EB;}
         <div class="fi"><label>Forma de Pagamento</label>
           <select id="ped-pgto"><option value="a_combinar">A Combinar</option><option value="pix">PIX</option><option value="dinheiro">Dinheiro</option><option value="cartao_debito">Cartão Débito</option><option value="cartao_credito">Cartão Crédito</option><option value="transferencia">Transferência</option><option value="boleto">Boleto</option></select>
         </div>
-        <div class="fi"><label>Entrada / Sinal R$</label><input type="text" id="ped-sig" placeholder="0,00" oninput="calcTot()"></div>
+        <div class="fi"><label>Entrada / Sinal R$</label><input type="text" id="ped-sig" placeholder="0,00" oninput="setTimeout(calcTot,0)"></div>
         <div class="fi"><label>Vencimento do Saldo</label><input type="date" id="ped-venc"></div>
       </div>
       <div class="fi" id="ped-parc-wrap" style="display:none;"><label>💳 Parcelas no cartão de crédito</label><select id="ped-parc"></select></div>
@@ -6805,6 +6814,129 @@ async function testarConexao(){
   if(code===200||code===404)lin('✅ Servidor de dados: funcionando.','#065F46');else lin('❌ Servidor de dados: '+(code===0?'sem internet ou bloqueado pelo navegador.':'erro '+code+'.'),'#991B1B');
   try{await _idtk('signInWithPassword',{email:'teste.conexao@'+_AUTH_DOM,password:'x-'+Date.now(),returnSecureToken:true});lin('✅ Login seguro: funcionando.','#065F46');}
   catch(e){var t=_authErroTipo(e);if(t==='cred'||t==='muitas')lin('✅ Login seguro: funcionando.','#065F46');else if(t==='naoativado')lin('⚠️ Login seguro: ainda não ativado no Firebase (o sistema continua funcionando no modo antigo).','#92400E');else lin('❌ Login seguro: '+(t==='rede'?'sem internet.':e.message),'#991B1B');}
+}
+/* ===== v5.5 — BUSCA INTELIGENTE (sugestões enquanto digita) E CAMPO DE DINHEIRO NORMAL ===== */
+function _bNorm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
+/* nota: começa com o termo = 3, alguma palavra começa = 2, contém = 1 */
+function _bNota(txt,q){var t=_bNorm(txt);if(!q)return 1;if(t.indexOf(q)===0)return 3;if((' '+t).indexOf(' '+q)>=0)return 2;return t.indexOf(q)>=0?1:0;}
+function _bMarca(txt,q){var t=String(txt),n=_bNorm(t),i=q?n.indexOf(q):-1;if(i<0)return escHtml(t);return escHtml(t.slice(0,i))+'<b>'+escHtml(t.slice(i,i+q.length))+'</b>'+escHtml(t.slice(i+q.length));}
+var _bLista=null;
+function _bFecha(){if(_bLista){_bLista.remove();_bLista=null;}}
+/* mostra uma lista de sugestões embaixo do campo. itens: [{txt, sub, ic, fn}] */
+function _bMostra(inp,itens){
+  _bFecha();if(!itens.length)return;
+  var r=inp.getBoundingClientRect(),ls=document.createElement('div');ls.className='bs-lista';
+  ls.style.left=Math.max(8,r.left)+'px';ls.style.top=(r.bottom+4)+'px';ls.style.width=Math.max(r.width,260)+'px';
+  var sel=0;
+  itens.forEach(function(it,k){var d=document.createElement('div');d.className='bs-it'+(k===0?' on':'');
+    d.innerHTML=(it.ic?'<span class="bs-ic">'+it.ic+'</span>':'')+'<span class="bs-tx"><span>'+it.html+'</span>'+(it.sub?'<small>'+escHtml(it.sub)+'</small>':'')+'</span>';
+    d.addEventListener('mousedown',function(e){e.preventDefault();_bFecha();it.fn();});
+    ls.appendChild(d);});
+  ls._mover=function(dir){var els=ls.children;if(!els.length)return;els[sel].classList.remove('on');sel=(sel+dir+els.length)%els.length;els[sel].classList.add('on');els[sel].scrollIntoView({block:'nearest'});};
+  ls._escolher=function(){var it=itens[sel];_bFecha();if(it)it.fn();};
+  document.body.appendChild(ls);_bLista=ls;ls._inp=inp;_bPosiciona();
+}
+function _bTeclas(inp){inp.addEventListener('keydown',function(e){if(!_bLista)return;if(e.key==='ArrowDown'){e.preventDefault();_bLista._mover(1);}else if(e.key==='ArrowUp'){e.preventDefault();_bLista._mover(-1);}else if(e.key==='Enter'){e.preventDefault();_bLista._escolher();}else if(e.key==='Escape')_bFecha();});
+  inp.addEventListener('blur',function(){setTimeout(function(){if(_bLista&&_bLista._inp===inp)_bFecha();},150);});}
+function _bPosiciona(){if(!_bLista||!_bLista._inp)return;var inp=_bLista._inp,r=inp.getBoundingClientRect();
+  if(r.bottom<0||r.top>window.innerHeight||!inp.isConnected){_bFecha();return;}
+  var mh=window.innerHeight-r.bottom-12;_bLista.style.left=Math.max(8,r.left)+'px';_bLista.style.width=Math.max(r.width,260)+'px';
+  if(mh<160){_bLista.style.top='';_bLista.style.bottom=(window.innerHeight-r.top+4)+'px';_bLista.style.maxHeight=Math.min(320,r.top-12)+'px';}else{_bLista.style.bottom='';_bLista.style.top=(r.bottom+4)+'px';_bLista.style.maxHeight=Math.min(320,mh)+'px';}}
+window.addEventListener('scroll',function(e){if(_bLista&&!(e.target&&e.target.classList&&e.target.classList.contains('bs-lista')))_bPosiciona();},true);
+window.addEventListener('resize',_bFecha);
+/* 1) <select> vira campo com busca (cliente, produto e máquina do pedido) */
+function selBusca(sel,ph){
+  if(!sel||sel._sb)return;sel._sb=true;
+  var inp=document.createElement('input');inp.type='text';inp.className='bs-inp';inp.autocomplete='off';inp.placeholder=ph||'Digite para buscar...';
+  inp.style.cssText=sel.style.cssText;inp.style.width='100%';
+  sel.parentNode.insertBefore(inp,sel);sel.style.display='none';sel._bsInp=inp;
+  function txtSel(){var o=sel.options[sel.selectedIndex];return (o&&o.value)?o.text:'';}
+  inp.value=txtSel();
+  function lista(){var q=_bNorm(inp.value.trim());if(q===_bNorm(txtSel()))q='';
+    var ops=Array.prototype.slice.call(sel.options).filter(function(o){return o.value;}).map(function(o){return {o:o,n:_bNota(o.text,q)};}).filter(function(x){return x.n>0;});
+    ops.sort(function(a,b){return b.n-a.n||a.o.text.localeCompare(b.o.text);});
+    _bMostra(inp,ops.slice(0,40).map(function(x){return {html:_bMarca(x.o.text,q),fn:function(){sel.value=x.o.value;inp.value=x.o.text;sel.dispatchEvent(new Event('change',{bubbles:true}));}};}));
+    if(!ops.length&&q){_bFecha();var ls=document.createElement('div');ls.className='bs-lista';var r=inp.getBoundingClientRect();ls.style.left=r.left+'px';ls.style.top=(r.bottom+4)+'px';ls.style.width=Math.max(r.width,260)+'px';ls.innerHTML='<div class="bs-vz">Nada encontrado com "'+escHtml(inp.value)+'"</div>';ls._mover=function(){};ls._escolher=function(){_bFecha();};document.body.appendChild(ls);_bLista=ls;ls._inp=inp;_bPosiciona();}
+  }
+  inp.addEventListener('focus',function(){inp.select();lista();});
+  inp.addEventListener('input',lista);
+  _bTeclas(inp);
+  inp.addEventListener('blur',function(){setTimeout(function(){if(!inp.value.trim()&&sel.value){sel.value='';sel.dispatchEvent(new Event('change',{bubbles:true}));}inp.value=txtSel();},170);});
+}
+/* mantém o campo igual ao select quando o sistema muda o valor sozinho */
+setInterval(function(){Array.prototype.forEach.call(document.querySelectorAll('select'),function(s){if(!s._bsInp||document.activeElement===s._bsInp)return;var o=s.options[s.selectedIndex],t=(o&&o.value)?o.text:'';if(s._bsInp.value!==t)s._bsInp.value=t;});},400);
+function _bAplicaPedido(){
+  var m=document.getElementById('mpd');if(!m)return;
+  var pc=document.getElementById('ped-cli');if(pc)selBusca(pc,'Digite o nome do cliente...');
+  Array.prototype.forEach.call(m.querySelectorAll('#pitens select'),function(s){selBusca(s,/selRef/.test(s.getAttribute('onchange')||'')?'Digite o produto ou máquina...':'Digite para buscar...');});
+}
+(function(){
+  var _ri=renderItens;renderItens=function(){var r=_ri.apply(this,arguments);try{_bAplicaPedido();}catch(e){}return r;};
+  var _ap=abrirPed;abrirPed=function(){var r=_ap.apply(this,arguments);setTimeout(function(){try{_bAplicaPedido();}catch(e){}},60);return r;};
+})();
+/* 2) barras de busca das telas com sugestões */
+function _bSugCli(q){return (DB.clientes||[]).map(function(c){return {c:c,n:Math.max(_bNota(c.nome,q),_bNota(c.tel,q)>0?1:0,_bNota(c.doc,q)>0?1:0)};}).filter(function(x){return x.n>0;}).sort(function(a,b){return b.n-a.n||String(a.c.nome).localeCompare(String(b.c.nome));});}
+function _bSugProd(q){var l=[];(DB.produtos||[]).forEach(function(p){var n=_bNota(p.nome,q);if(n)l.push({x:p,n:n,maq:false});});(DB.maquinas||[]).forEach(function(m){var n=_bNota(m.nome,q);if(n)l.push({x:m,n:n,maq:true});});return l.sort(function(a,b){return b.n-a.n||String(a.x.nome).localeCompare(String(b.x.nome));});}
+function barraBusca(id,montar){
+  var inp=document.getElementById(id);if(!inp||inp._bb)return;inp._bb=true;inp.autocomplete='off';
+  function mostra(){var q=_bNorm(inp.value.trim());if(!q){_bFecha();return;}_bMostra(inp,montar(q,inp).slice(0,12));}
+  inp.addEventListener('input',mostra);inp.addEventListener('focus',mostra);_bTeclas(inp);
+}
+function _bUsa(inp,txt){inp.value=txt;inp.dispatchEvent(new Event('input',{bubbles:true}));setTimeout(_bFecha,0);}
+function _bInstala(){
+  barraBusca('pb',function(q,inp){
+    var r=_bSugCli(q).slice(0,6).map(function(x){return {ic:'👤',html:_bMarca(x.c.nome,q),sub:'Cliente · '+((DB.pedidos||[]).filter(function(p){return p.clienteId===x.c.id;}).length)+' pedido(s)',fn:function(){_bUsa(inp,x.c.nome);}};});
+    return r.concat(_bSugProd(q).slice(0,6).map(function(x){return {ic:x.maq?'🔧':'🍺',html:_bMarca(x.x.nome,q),sub:(x.maq?'Máquina':'Produto')+' · pedidos com este item',fn:function(){_bUsa(inp,x.x.nome);}};}));
+  });
+  barraBusca('cli-bsc',function(q,inp){return _bSugCli(q).slice(0,10).map(function(x){return {ic:'👤',html:_bMarca(x.c.nome,q),sub:[x.c.tel,x.c.doc].filter(Boolean).join(' · '),fn:function(){_bUsa(inp,x.c.nome);}};});});
+  barraBusca('lfbsc',function(q,inp){var vis={},l=[];(DB.lancamentos||[]).forEach(function(x){var d=String(x.desc||'').trim();if(!d||vis[_bNorm(d)])return;var n=_bNota(d,q);if(n){vis[_bNorm(d)]=1;l.push({d:d,n:n});}});
+    return l.sort(function(a,b){return b.n-a.n||a.d.localeCompare(b.d);}).slice(0,10).map(function(x){return {ic:'💰',html:_bMarca(x.d,q),fn:function(){_bUsa(inp,x.d);}};});});
+  // Produtos e Máquinas ganham uma barra de busca
+  [['lprod','prod-bsc','🔍 Buscar produto...',function(){return DB.produtos||[];}],['lmaq','maq-bsc','🔍 Buscar máquina...',function(){return DB.maquinas||[];}]].forEach(function(cfg){
+    var alvo=document.getElementById(cfg[0]);if(!alvo||document.getElementById(cfg[1]))return;var card=alvo.closest('.card')||alvo;
+    var w=document.createElement('div');w.style.cssText='margin-bottom:14px;';var i=document.createElement('input');i.className='srch';i.type='text';i.id=cfg[1];i.placeholder=cfg[2];i.style.cssText='width:320px;max-width:100%;';w.appendChild(i);card.parentNode.insertBefore(w,card);
+    i.addEventListener('input',function(){_bFiltraTabela(cfg[0],i.value);});
+    barraBusca(cfg[1],function(q,inp){return cfg[3]().map(function(x){return {x:x,n:_bNota(x.nome,q)};}).filter(function(x){return x.n;}).sort(function(a,b){return b.n-a.n||String(a.x.nome).localeCompare(String(b.x.nome));}).slice(0,10)
+      .map(function(x){return {ic:cfg[0]==='lmaq'?'🔧':'🍺',html:_bMarca(x.x.nome,q),sub:x.x.precoVenda?R$(x.x.precoVenda):(x.x.evento||x.x.diaria?R$(x.x.evento||x.x.diaria)+'/evento':''),fn:function(){_bUsa(inp,x.x.nome);}};});});
+  });
+}
+function _bFiltraTabela(id,txt){var q=_bNorm(String(txt||'').trim()),c=document.getElementById(id);if(!c)return;
+  Array.prototype.forEach.call(c.querySelectorAll('tbody tr, .ap-card, .pc-card'),function(tr){tr.style.display=(!q||_bNorm(tr.textContent).indexOf(q)>=0)?'':'none';});}
+(function(){
+  var _rp=renderProds;renderProds=function(){var r=_rp.apply(this,arguments);try{_bInstala();var i=document.getElementById('prod-bsc');if(i&&i.value)_bFiltraTabela('lprod',i.value);}catch(e){}return r;};
+  var _rmq=renderMaqs;renderMaqs=function(){var r=_rmq.apply(this,arguments);try{_bInstala();var i=document.getElementById('maq-bsc');if(i&&i.value)_bFiltraTabela('lmaq',i.value);}catch(e){}return r;};
+  setTimeout(function(){try{_bInstala();}catch(e){}},800);
+  var _gt=goTo;goTo=function(){var r=_gt.apply(this,arguments);try{_bInstala();}catch(e){}return r;};
+  // Pedidos: a busca também encontra pelo nome do produto/máquina do pedido
+  var _rpd=renderPeds;renderPeds=function(){
+    var pb=document.getElementById('pb'),q=pb?_bNorm(pb.value.trim()):'';
+    if(!q)return _rpd.apply(this,arguments);
+    var orig=DB.pedidos,ids={};
+    orig.forEach(function(p){var c=(DB.clientes||[]).find(function(x){return x.id===p.clienteId;});
+      var tx=[c&&c.nome,p.num,p.local].concat((p.itens||[]).map(function(it){var x=(it.tipo==='maquina'?DB.maquinas:DB.produtos).find(function(y){return y.id===it.refId;});return (x&&x.nome)||it.nome;})).join(' ');
+      if(_bNorm(tx).indexOf(q)>=0)ids[p.id]=1;});
+    var v=pb.value;pb.value='';DB.pedidos=orig.filter(function(p){return ids[p.id];});
+    try{return _rpd.apply(this,arguments);}finally{DB.pedidos=orig;pb.value=v;}
+  };
+})();
+/* 3) campo de dinheiro: digita como se escreve (15 = R$ 15,00; 15,5 = R$ 15,50) e o total atualiza na hora */
+function applyMoneyMask(el){
+  if(!el||el._mkm)return;el._mkm=true;el.setAttribute('inputmode','decimal');
+  function ler(v){v=String(v||'').replace(/[^\d,]/g,'');var p=v.indexOf(',');if(p>=0)v=v.slice(0,p+1)+v.slice(p+1).replace(/,/g,'').slice(0,2);return v;}
+  function fmtDig(){var v=ler(this.value),pos=v.indexOf(','),ip=pos>=0?v.slice(0,pos):v,dp=pos>=0?v.slice(pos+1):null;
+    ip=ip.replace(/^0+(?=\d)/,'').slice(0,10);this._raw=parseFloat((ip||'0')+'.'+(dp||'0'))||0;
+    this.value=(ip?ip.replace(/\B(?=(\d{3})+(?!\d))/g,'.'):(dp!==null?'0':''))+(dp!==null?','+dp:'');}
+  function fmtFim(){fmtDig.call(this);if(!this.value){this._raw=0;return;}var s=this._raw.toFixed(2).split('.');s[0]=s[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');this.value=s[0]+','+s[1];}
+  el.addEventListener('input',fmtDig,true);   // roda antes do cálculo do total
+  el.addEventListener('blur',function(){fmtFim.call(el);try{el.dispatchEvent(new Event('change'));}catch(e){}if(el.getAttribute('oninput'))try{el.oninput&&el.oninput();}catch(e){}});
+}
+function updPrecoMask(i,el){
+  if(!el._mkm){var v0=el.value;applyMoneyMask(el);el.value=v0;el.addEventListener('blur',function(){_itens[i]&&(_itens[i].preco=el._raw||0);calcTot();});}
+  var v=String(el.value||'').replace(/[^\d,]/g,''),p=v.indexOf(',');if(p>=0)v=v.slice(0,p+1)+v.slice(p+1).replace(/,/g,'').slice(0,2);
+  var ip=p>=0?v.slice(0,p):v,dp=p>=0?v.slice(p+1):null;ip=ip.replace(/^0+(?=\d)/,'');
+  el._raw=parseFloat((ip||'0')+'.'+(dp||'0'))||0;el.value=(ip?ip.replace(/\B(?=(\d{3})+(?!\d))/g,'.'):(dp!==null?'0':''))+(dp!==null?','+dp:'');
+  if(_itens[i])_itens[i].preco=el._raw;calcTot();
+  var sub=el.closest('.ir');if(sub){var d=sub.lastElementChild;if(d&&/Subtotal/.test(d.textContent))d.textContent='Subtotal: '+R$((_itens[i].qty||1)*_itens[i].preco);}
 }
 /* ---- PAINEL DO GESTOR ---- */
 function _soGestor(){return _authUser&&_authUser.isMaster===true;}
