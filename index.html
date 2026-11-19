@@ -1154,7 +1154,7 @@ a.ap-dt-nm:hover{text-decoration:underline;color:#2563EB;}
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão com o Firebase</a></div>
-    <div class="login-version">ChoppMaster ERP v4.4 · 18/11</div>
+    <div class="login-version">ChoppMaster ERP v4.5 · 18/11</div>
   </div>
 </div>
 
@@ -6271,12 +6271,87 @@ function equipeForm(u,L,depois){
     var r=_rm.apply(this,arguments);
     try{var bx=document.querySelector('#pg-master .mbtns');if(bx){
       Array.prototype.forEach.call(bx.querySelectorAll('button'),function(b){var t=b.textContent;if((/recibo/i.test(t)&&!gPode('cob_receber'))||((/link de cadastro|Nova distribuidora/i.test(t))&&!gPode('dist_criar')))b.style.display='none';});
-      if(!(_authUser&&_authUser.equipe)&&!bx.querySelector('.eq-btn')){var be=_el('button','','👥 Equipe');be.className=(bx.querySelector('button.bs')||{}).className||'btn bs';be.classList.add('eq-btn');be.onclick=equipeAbrir;bx.appendChild(be);}
+      if(!(_authUser&&_authUser.equipe)&&!bx.querySelector('.eq-btn')){var be=_el('button','','👥 Equipe');be.className=bx.querySelector('.gs-hb')?'gs-hb eq-btn':'btn bs eq-btn';be.onclick=equipeAbrir;bx.appendChild(be);}
     }}catch(e){}
     if(_authUser&&_authUser.equipe&&!demoOn()){equipeLer().then(function(l){var u=l.filter(function(x){return 'eq_'+x.id===_authUser.id;})[0];
       if(!u||u.ativo===false){toast('Seu acesso foi bloqueado pelo gestor.','err');setTimeout(function(){fazerLogout();},1500);return;}
       if(JSON.stringify(u.perms||[])!==JSON.stringify(_authUser.perms||[])){_authUser.perms=u.perms||[];try{sessionStorage.setItem('cm_auth',JSON.stringify(_authUser));}catch(e){}masterMostra();}
     }).catch(function(){});}
+    return r;};
+})();
+/* ===== v4.5 — PRODUTOS PADRÃO (copiar o catálogo de uma distribuidora modelo para as outras) ===== */
+function _nmNorm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();}
+function modeloLer(){return fsGet('gestao_distribuidoras/_modelo').then(function(d){return d?regParse(d):{};}).catch(function(){return {};});}
+function _distDados(cod){return fsGet(dataPathDist(cod)).then(function(dd){var d={};if(dd&&dd.fields)Object.keys(dd.fields).forEach(function(k){d[k]=fromFirestore(dd.fields[k]);});return d;});}
+function _prodCopia(p){var o=JSON.parse(JSON.stringify(p));o.id=uid();o.estoque=0;return o;}
+var _MAQ_FORA=['id','serial','status','clienteId','pedidoId','local','ocupada','ocupadaAte'];
+function _maqCopia(m){var o=JSON.parse(JSON.stringify(m));_MAQ_FORA.forEach(function(k){delete o[k];});o.id=uid();o.serial='';return o;}
+/* junta o catálogo do modelo no da distribuidora; devolve quantos entraram e quantos foram atualizados */
+function catalogoMesclar(dest,orig,opt){
+  var res={add:0,upd:0},P=(dest.produtos||[]).slice(),M=(dest.maquinas||[]).slice();
+  (orig.produtos||[]).forEach(function(p){if(!p||!p.nome)return;var x=P.filter(function(y){return _nmNorm(y.nome)===_nmNorm(p.nome);})[0];
+    if(!x){P.push(_prodCopia(p));res.add++;}
+    else if(opt.atualizar){var mud=false;Object.keys(p).forEach(function(k){if(k==='id'||k==='nome'||k==='estoque')return;if(p[k]!=null&&p[k]!==''&&JSON.stringify(x[k])!==JSON.stringify(p[k])){x[k]=JSON.parse(JSON.stringify(p[k]));mud=true;}});if(mud)res.upd++;}});
+  if(opt.maquinas)(orig.maquinas||[]).forEach(function(m){if(!m||!m.nome)return;var x=M.filter(function(y){return _nmNorm(y.nome)===_nmNorm(m.nome);})[0];
+    if(!x){M.push(_maqCopia(m));res.add++;}
+    else if(opt.atualizar){var mud=false;Object.keys(m).forEach(function(k){if(k==='nome'||_MAQ_FORA.indexOf(k)>=0)return;if(m[k]!=null&&m[k]!==''&&JSON.stringify(x[k])!==JSON.stringify(m[k])){x[k]=JSON.parse(JSON.stringify(m[k]));mud=true;}});if(mud)res.upd++;}});
+  res.produtos=P;res.maquinas=M;return res;
+}
+function produtosPadrao(){
+  if(!gPode('dist_editar'))return _semPerm();
+  var regs=(_mRegs||[]).slice().sort(function(a,b){return String(a.nome).localeCompare(String(b.nome));});
+  if(regs.length<2)return toast('É preciso ter pelo menos 2 distribuidoras.','err');
+  var c=_el('div',''),api;
+  c.appendChild(_el('p','margin:0 0 12px;font-size:13px;color:#475569;line-height:1.5;','Escolha a distribuidora que já tem os produtos certos. Os produtos dela (nome, unidade, categoria, preço de venda e custo) são copiados para as outras. O estoque não é copiado — cada uma controla o seu.'));
+  c.appendChild(_el('label','display:block;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;margin-bottom:3px;','Distribuidora modelo'));
+  var sm=_sel(regs.map(function(r){return [r.id,_nomeCurto(r)+' ('+(r.nProd||0)+' produtos)'];}),'');sm.style.cssText=_css()+'margin-bottom:6px;';c.appendChild(sm);
+  var info=_el('div','font-size:12px;color:#64748B;margin-bottom:12px;min-height:16px;');c.appendChild(info);
+  function ck(txt,on,sub){var l=_el('label','display:flex;gap:10px;align-items:flex-start;padding:9px 0;font-size:13.5px;color:#1E293B;cursor:pointer;border-top:1px solid #F1F5F9;');var k=_el('input','width:18px;height:18px;flex:none;margin-top:1px;');k.type='checkbox';k.checked=on;l.appendChild(k);var t=_el('div','');t.appendChild(document.createTextNode(txt));if(sub)t.appendChild(_el('div','font-size:11.5px;color:#94A3B8;margin-top:1px;',sub));l.appendChild(t);c.appendChild(l);return k;}
+  var kAt=ck('Atualizar os produtos que elas já têm',true,'Se o nome for igual, o preço, a unidade e o custo ficam iguais aos do modelo.');
+  var kMq=ck('Copiar também as máquinas',false,'Copia nome e valores de locação (sem número de série).');
+  var kNv=ck('Usar estes produtos nas novas distribuidoras',true,'Toda distribuidora criada daqui pra frente já começa com eles.');
+  c.appendChild(_el('div','font-size:11px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px;','Copiar para'));
+  var lst=_el('div','border:1px solid #E2E8F0;border-radius:10px;overflow:hidden;');c.appendChild(lst);var alvos={};
+  function pintaAlvos(){lst.innerHTML='';alvos={};regs.forEach(function(r,i){if(r.id===sm.value)return;var l=_el('label','display:flex;gap:10px;align-items:center;padding:10px 12px;font-size:13.5px;cursor:pointer;border-top:1px solid #F1F5F9;');var k=_el('input','width:18px;height:18px;flex:none;');k.type='checkbox';k.checked=true;alvos[r.id]=k;l.appendChild(k);var t=_el('div','flex:1;min-width:0;');t.appendChild(_el('div','font-weight:700;color:#0F2044;',_nomeCurto(r)));t.appendChild(_el('div','font-size:11.5px;color:#94A3B8;',(r.nProd||0)+' produtos · '+(r.nMaq||0)+' máquinas hoje'));l.appendChild(t);lst.appendChild(l);});}
+  var orig=null;
+  function carrega(){orig=null;info.textContent='Carregando produtos do modelo...';pintaAlvos();_distDados(sm.value).then(function(d){orig=d;info.textContent='✅ '+(d.produtos||[]).length+' produtos e '+(d.maquinas||[]).length+' máquinas: '+(d.produtos||[]).slice(0,6).map(function(p){return p.nome;}).join(', ')+((d.produtos||[]).length>6?'...':'');}).catch(function(e){info.textContent='Não foi possível ler ('+e.message+').';});}
+  sm.onchange=carrega;
+  var m=msgEl();c.appendChild(m);
+  modeloLer().then(function(md){var ini=md.dist&&regs.some(function(r){return r.id===md.dist;})?md.dist:regs.slice().sort(function(a,b){return (b.nProd||0)-(a.nProd||0);})[0].id;sm.value=ini;if(md.dist)kMq.checked=md.maquinas===true;carrega();});
+  api=dlg('📦 Produtos padrão',c,[{txt:'Cancelar',cls:'bs',fn:function(a){a.fechar();}},{txt:'Copiar agora',cls:'bp',fn:async function(a){
+    if(!orig)return mostraMsg(m,'Aguarde carregar os produtos do modelo.');
+    if(!(orig.produtos||[]).length&&!(kMq.checked&&(orig.maquinas||[]).length))return mostraMsg(m,'A distribuidora modelo não tem produtos cadastrados.');
+    var ids=Object.keys(alvos).filter(function(k){return alvos[k].checked;});
+    if(!ids.length&&!kNv.checked)return mostraMsg(m,'Marque pelo menos uma distribuidora.');
+    var opt={atualizar:kAt.checked,maquinas:kMq.checked},tot={add:0,upd:0,ok:0,erro:[]};
+    info.textContent='Copiando... não feche esta janela.';
+    try{await fsPatch('gestao_distribuidoras/_modelo',fsFields({dist:kNv.checked?sm.value:'',maquinas:kMq.checked,atualizadoEm:new Date().toISOString()}),['dist','maquinas','atualizadoEm']);}catch(e){}
+    for(var i=0;i<ids.length;i++){
+      var r=regs.filter(function(x){return x.id===ids[i];})[0];info.textContent='Copiando para '+_nomeCurto(r)+' ('+(i+1)+'/'+ids.length+')...';
+      try{var d=await _distDados(r.id),x=catalogoMesclar(d,orig,opt);
+        if(x.add||x.upd)await fsPatch(dataPathDist(r.id),fsFields({produtos:x.produtos,maquinas:x.maquinas}),['produtos','maquinas']);
+        r.nProd=x.produtos.length;r.nMaq=x.maquinas.length;tot.add+=x.add;tot.upd+=x.upd;tot.ok++;
+      }catch(e){tot.erro.push(_nomeCurto(r));}
+    }
+    a.fechar();
+    var txt=ids.length?('Pronto! '+tot.ok+' distribuidora'+(tot.ok===1?'':'s')+' atualizada'+(tot.ok===1?'':'s')+': '+tot.add+' ite'+(tot.add===1?'m novo':'ns novos')+' e '+tot.upd+' atualizado'+(tot.upd===1?'':'s')+'.'):'Modelo salvo para as novas distribuidoras.';
+    if(tot.erro.length)txt+=' Não deu certo em: '+tot.erro.join(', ')+' (verifique a internet e tente de novo).';
+    toast(txt,tot.erro.length?'err':'ok');if(tot.ok)masterMostra();
+  }}]);
+}
+/* catálogo que uma nova distribuidora recebe */
+function modeloCatalogo(){return modeloLer().then(function(md){if(!md.dist)return null;return _distDados(md.dist).then(function(d){return {nome:md.dist,produtos:(d.produtos||[]).map(_prodCopia),maquinas:md.maquinas?(d.maquinas||[]).map(_maqCopia):[]};});}).catch(function(){return null;});}
+function modeloCheckEl(){
+  var l=_el('label','display:none;gap:10px;align-items:flex-start;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:10px 12px;margin-top:12px;font-size:13px;color:#14532D;cursor:pointer;');
+  var k=_el('input','width:18px;height:18px;flex:none;');k.type='checkbox';k.checked=true;l.appendChild(k);var t=_el('div','');l.appendChild(t);
+  var o={el:l,ck:k,cat:null};
+  modeloCatalogo().then(function(cat){if(!cat||!cat.produtos.length)return;o.cat=cat;var r=(_mRegs||[]).filter(function(x){return x.id===cat.nome;})[0];
+    t.innerHTML='';t.appendChild(_el('strong','','📦 Já começar com os produtos de '+(r?_nomeCurto(r):cat.nome)));t.appendChild(_el('div','font-size:11.5px;color:#166534;margin-top:2px;',cat.produtos.length+' produtos'+(cat.maquinas.length?' e '+cat.maquinas.length+' máquinas':'')+' · dá pra mudar depois'));l.style.display='flex';});
+  return o;
+}
+(function(){
+  var _rm=renderMaster;renderMaster=function(){var r=_rm.apply(this,arguments);
+    try{var bx=document.querySelector('#pg-master .mbtns');if(bx&&gPode('dist_editar')&&!bx.querySelector('.pp-btn')){var ref=bx.querySelector('button.bs')||bx.querySelector('button');var b=_el('button','','📦 Produtos padrão');b.className=bx.querySelector('.gs-hb')?'gs-hb pp-btn':'btn bs pp-btn';b.onclick=produtosPadrao;var eq=bx.querySelector('.eq-btn');if(eq)bx.insertBefore(b,eq);else bx.appendChild(b);}}catch(e){}
     return r;};
 })();
 /* ---- PAINEL DO GESTOR ---- */
@@ -6703,6 +6778,7 @@ function masterNovaDist(pre){
   var eml=campoEl('E-mail (para enviar recibos)','email',pre?pre.email:'');c.appendChild(eml.wrap);
   c.appendChild(_el('div','font-size:12px;font-weight:700;color:#0F2044;margin:12px 0 8px;','💵 Quanto ela paga pelo uso do sistema'));
   var form=cobForm({});c.appendChild(form.el);
+  var mdl=modeloCheckEl();c.appendChild(mdl.el);
   var m=msgEl();c.appendChild(m);
   dlg('🏢 Nova distribuidora',c,[{txt:'Cancelar',cls:'bs',fn:function(a){a.fechar();}},{txt:'Criar',cls:'bp',fn:async function(a){
     var n=sanitizeStr(nome.input.value,80),cd=normCodigo(cod.input.value),lgn=sanitizeStr(lg.input.value,40).toLowerCase().replace(/\s+/g,''),s=sn.input.value;
@@ -6722,6 +6798,7 @@ function masterNovaDist(pre){
       var adm={id:uid(),nome:reg.responsavel||'Administrador',login:lgn,senhaHash:await hashSenhaNova(s),admin:true,modulos:mods,ativo:true,mustChange:true};
       var base={pedidos:[],produtos:[],maquinas:[],clientes:[],lancamentos:[],movimentos:[],alertas:[],solicitacoes:[],usuarios:[adm],licenca:{codigos:[]},
         config:{empresa:n,responsavel:reg.responsavel,cpfCnpj:(pre&&pre.cpfCnpj)||'',tel:reg.telefone,cnpj:'',email:reg.email||'',end:pre?[pre.endereco,pre.cidade].filter(Boolean).join(' - '):'',pix:'',termoVenda:'',termoLocacao:''},distribuidoras:{}};
+      if(mdl.cat&&mdl.ck.checked){base.produtos=mdl.cat.produtos;base.maquinas=mdl.cat.maquinas;}
       await fsPatch(dataPathDist(cd),fsFields(base));
       await fsPatch('gestao_distribuidoras/'+cd,fsFields(reg));
       if(pre){try{await fsDelete('gestao_distribuidoras/'+pre.id);}catch(e){}}
