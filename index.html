@@ -432,6 +432,65 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 #user-info{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver3);}
 #user-info strong{color:var(--dk);font-size:13px;}
 /* ===== VISUAL DE APLICATIVO (v4.1) ===== */
+/* agenda v4.2 */
+.ag-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+.ag-nav{display:flex;align-items:center;gap:8px;flex:1;min-width:220px;}
+.ag-seta{width:38px;height:38px;border-radius:12px;border:1px solid #E2E8F0;background:#fff;font-size:22px;color:#0F2044;cursor:pointer;line-height:1;}
+.ag-tit{font-size:18px;font-weight:900;color:#0F2044;}
+.ag-seg{display:flex;background:#E2E8F0;border-radius:12px;padding:3px;}
+.ag-seg button{border:none;background:none;padding:8px 14px;border-radius:10px;font-weight:800;font-size:13px;color:#475569;cursor:pointer;font-family:inherit;}
+.ag-seg button.on{background:#fff;color:#0F2044;box-shadow:0 1px 3px rgba(15,32,68,.15);}
+.ag-res{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+.ag-wrap{display:grid;grid-template-columns:1fr;gap:14px;}
+@media(min-width:1000px){.ag-wrap{grid-template-columns:1.25fr 1fr;align-items:start;}.ag-dia{position:sticky;top:76px;}}
+.ag-mes{padding:10px;}
+.ag-dows{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11px;font-weight:800;color:#64748B;padding:4px 0 6px;}
+.ag-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.ag-d{position:relative;border:1px solid transparent;background:#F8FAFC;border-radius:12px;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:5px 2px;cursor:pointer;font-family:inherit;}
+.ag-d .n{font-size:13px;font-weight:700;color:#334155;}
+.ag-d.fora{opacity:.35;}
+.ag-d.tem{background:#FFFBEB;border-color:#FDE68A;}
+.ag-d .q{margin-top:3px;min-width:24px;height:24px;border-radius:999px;background:#F59E0B;color:#fff;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;padding:0 6px;}
+.ag-d .ql{font-size:9px;color:#92400E;font-weight:700;margin-top:1px;}
+.ag-d.atr .q{background:#DC2626;}
+.ag-d.hoje{border-color:#2563EB;}.ag-d.hoje .n{color:#2563EB;font-weight:900;}
+.ag-d.sel{background:#0F2044!important;border-color:#0F2044!important;}.ag-d.sel .n,.ag-d.sel .ql{color:#fff;}
+.ag-d .dots{display:flex;gap:3px;margin-top:3px;}.ag-d .dots i,.ag-leg i{width:7px;height:7px;border-radius:50%;display:inline-block;}
+i.r{background:#DC2626;}i.o{background:#2563EB;}.ag-leg i.q{background:#F59E0B;width:10px;height:10px;}
+.ag-leg{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:#64748B;padding:10px 4px 2px;}.ag-leg span{display:flex;align-items:center;gap:5px;}
+@media(max-width:768px){.ag-d{min-height:54px;}.ag-d .ql{display:none;}.ag-tit{font-size:16px;}}
+.ag-sem{display:grid;gap:12px;}
+.ag-bloco{padding:4px 14px 6px;margin-bottom:0;}
+.ag-dcab{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 0 8px;border-bottom:1px solid #F1F5F9;font-size:14px;color:#0F2044;flex-wrap:wrap;}
+.ag-vz{padding:18px 4px;text-align:center;color:#64748B;font-size:13px;}
+.ag-it{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #F1F5F9;}.ag-it:last-child{border-bottom:none;}
+.ag-it.feito{opacity:.6;}
+.ag-hr{background:#FEF3C7;color:#92400E;font-weight:900;border-radius:12px;padding:8px 8px;font-size:13px;flex-shrink:0;height:fit-content;min-width:56px;text-align:center;cursor:pointer;}
+.ag-hr.az{background:#DBEAFE;color:#1E40AF;}.ag-hr.vm{background:#FEE2E2;color:#991B1B;}
+.ag-it-c{flex:1;min-width:0;}
+.ag-it-t{display:flex;justify-content:space-between;gap:8px;font-size:14px;color:#0F2044;cursor:pointer;}
+.ag-it-r{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.ag-bts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.ag-b{border:1px solid #E2E8F0;background:#fff;border-radius:10px;padding:7px 10px;font-size:12px;font-weight:800;color:#334155;cursor:pointer;text-decoration:none;font-family:inherit;}
+.ag-b.wa{background:#DCFCE7;border-color:#86EFAC;color:#166534;}.ag-b.az{background:#EFF6FF;border-color:#BFDBFE;color:#1E40AF;}
+.ag-it.on{cursor:pointer;}
+.gs-info>div,.ag-wrap>*,.ag-sem>*{min-width:0;}
+.ag-it-c{overflow:hidden;}.ag-it-t b:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.ag-it-t b:last-child{flex-shrink:0;}
+/* painel do gestor v4.2 */
+.mtop.gs-hero{background:#0F2044;border-radius:22px;padding:18px 20px;color:#fff;margin-bottom:14px!important;}
+.mtop.gs-hero>div:first-child>div:first-child{color:rgba(255,255,255,.7)!important;}
+.mtop.gs-hero>div:first-child>div:last-child{color:#fff!important;font-size:22px!important;font-weight:800!important;}
+.gs-hb{border:none;border-radius:12px;padding:10px 14px;font-weight:800;font-size:13px;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;font-family:inherit;}
+.gs-hb.pri{background:#F59E0B;color:#fff;box-shadow:0 6px 16px rgba(245,158,11,.35);}
+#m-tabs{background:transparent!important;}
+.gs-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px;}
+.gs-kpi{padding:14px 16px;}
+.gs-card{margin-bottom:12px;overflow:hidden;}
+.gs-top{display:flex;align-items:center;gap:12px;padding:14px 14px 8px;}
+.gs-info{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px 14px;padding:4px 14px 12px;}
+@media(max-width:768px){.gs-info{grid-template-columns:1fr 1fr;}.mtop.gs-hero .mbtns{display:grid!important;grid-template-columns:1fr 1fr;gap:8px;}.mtop.gs-hero .gs-hb.pri{grid-column:1/-1;order:-1;padding:13px;}}
+#pg-master .ap-card,#pg-master div[style*="border:1px solid var(--border)"]{border-radius:18px;}
+
 @media(min-width:769px){#bottom-nav{display:none!important;}#mn{padding-bottom:0!important;}}
 @media(max-width:768px){.ap-res .v{font-size:17px;white-space:nowrap;}#pg-dashboard>div[style*="1fr 1fr"]{grid-template-columns:1fr!important;}}
 
@@ -1091,7 +1150,7 @@ a.ap-dt-nm:hover{text-decoration:underline;color:#2563EB;}
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão com o Firebase</a></div>
-    <div class="login-version">ChoppMaster ERP v4.1 · 18/11</div>
+    <div class="login-version">ChoppMaster ERP v4.2 · 18/11</div>
   </div>
 </div>
 
@@ -5066,7 +5125,7 @@ function enviarPedWhats(id){
   dlg('📲 Enviar pedido no WhatsApp',d,[{txt:'Cancelar',cls:'bs',fn:function(a){a.fechar();}},{txt:'📄 Só o resumo',cls:'bs',fn:function(a){a.fechar();if(!c.tel){toast('Cliente sem telefone cadastrado.','err');return;}_abreWa(c.tel,_resumoPed(p));}},{txt:'✍️ Com assinatura',cls:'bk',fn:function(a){a.fechar();p.modelo=sel.value;saveDB();closeM('mdt-mo');enviarAprovacao(p.id);}}]);
 }
 /* --- andamento da entrega + GPS --- */
-function setEntregaSt(id,st){
+function setEntregaSt(id,st,silencioso){
   var p=DB.pedidos.find(function(x){return x.id===id;});if(!p)return;
   p.entregaSt=st;p.entregaHist=(p.entregaHist||[]).concat([{st:st,em:new Date().toISOString()}]);
   if(st==='entregue'){p.entregueEm=hj();if(_gps.ped===p.id)gpsParar();}
@@ -5076,7 +5135,7 @@ function setEntregaSt(id,st){
   webSyncPedido(p).catch(function(){});
   if(st==='saiu')gpsIniciar(p.id);
   toast('Entrega: '+entStNome(st),'ok');
-  verPed(p.id);try{renderPeds();}catch(e){}
+  if(!silencioso)verPed(p.id);try{renderPeds();}catch(e){}
 }
 var _gps={ped:null,watch:null,last:0,lock:null};
 function gpsIniciar(pid){
@@ -5835,6 +5894,134 @@ function renderInicio(){
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ini);else ini();
   var _gt=goTo;goTo=function(pg){var r=_gt.apply(this,arguments);try{var f=document.getElementById('ap-fab');if(f)f.style.display=(pg==='pedidos'&&!_ehPc())?'':'none';var s=document.getElementById('ap-snack');if(s)s.remove();}catch(e){}return r;};
+})();
+/* ===== AGENDA (v4.2): contagem de entregas no dia, lista do dia, filtros dia/semana/mês ===== */
+var _agVis='mes',_agData=null;
+var _MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+var _DSEM=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+function _isoD(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function _dDe(iso){var p=String(iso).split('-');return new Date(+p[0],+p[1]-1,+p[2]);}
+function agEventos(){
+  var ev={};function add(d,e){if(!d)return;(ev[d]=ev[d]||[]).push(e);}
+  (DB.pedidos||[]).forEach(function(p){if(getStatus(p)==='cancelado')return;
+    add(p.entrega||p.data,{tipo:'entrega',ped:p,hora:p.horaEntrega||'',semData:!p.entrega});
+    if(p.devolucao&&(p.itens||[]).some(function(i){return i.tipo==='maquina';}))add(p.devolucao,{tipo:'recolher',ped:p,hora:''});});
+  try{webPend('pedido').forEach(function(w){if(w.entrega)add(w.entrega,{tipo:'online',web:w,hora:w.hora||''});});}catch(e){}
+  Object.keys(ev).forEach(function(k){ev[k].sort(function(a,b){return String(a.hora||'99').localeCompare(String(b.hora||'99'));});});
+  return ev;
+}
+function _agCont(lst){var c={ent:0,rec:0,on:0,feito:0,tot:0};(lst||[]).forEach(function(e){if(e.tipo==='entrega'){c.ent++;c.tot+=e.ped.total||0;var s=entStAtual(e.ped);if(s==='entregue'||s==='recolhido'||e.ped.entregueEm)c.feito++;}else if(e.tipo==='recolher'){if(!e.ped.retiradoEm&&getStatus(e.ped)!=='devolvido')c.rec++;}else{c.on++;c.tot+=e.web.total||0;}});return c;}
+function renderCalendario(){
+  var pg=document.getElementById('pg-calendario');if(!pg)return;
+  if(!_agData)_agData=hj();
+  var dSel=_dDe(_agData);_calAno=dSel.getFullYear();_calMes=dSel.getMonth();
+  var ev=agEventos(),h=hj();
+  /* período visível */
+  var dias=[];
+  if(_agVis==='dia')dias=[_agData];
+  else if(_agVis==='semana'){var ini=new Date(dSel.getFullYear(),dSel.getMonth(),dSel.getDate()-dSel.getDay());for(var i=0;i<7;i++)dias.push(_isoD(new Date(ini.getFullYear(),ini.getMonth(),ini.getDate()+i)));}
+  else{var nd=new Date(_calAno,_calMes+1,0).getDate();for(var j=1;j<=nd;j++)dias.push(_isoD(new Date(_calAno,_calMes,j)));}
+  var tot={ent:0,rec:0,on:0,tot:0};dias.forEach(function(d){var c=_agCont(ev[d]);tot.ent+=c.ent;tot.rec+=c.rec;tot.on+=c.on;tot.tot+=c.tot;});
+  var titulo=_agVis==='mes'?_MESES[_calMes]+' '+_calAno:(_agVis==='semana'?'Semana de '+_dCurta(dias[0])+' a '+_dCurta(dias[6]):_DSEM[dSel.getDay()]+', '+dSel.getDate()+' de '+_MESES[dSel.getMonth()].toLowerCase());
+  var html='<div class="ag-top"><div class="ag-nav"><button class="ag-seta" onclick="agMover(-1)">‹</button><div class="ag-tit">'+escHtml(titulo)+'</div><button class="ag-seta" onclick="agMover(1)">›</button></div>'
+   +'<div class="ag-seg">'+[['dia','Dia'],['semana','Semana'],['mes','Mês']].map(function(x){return '<button class="'+(_agVis===x[0]?'on':'')+'" onclick="_agVis=\''+x[0]+'\';renderCalendario()">'+x[1]+'</button>';}).join('')+'</div>'
+   +'<button class="ap-chip" onclick="_agData=hj();renderCalendario()">Hoje</button></div>'
+   +'<div class="ag-res"><span class="ap-pill p-am">🚚 '+tot.ent+' entrega'+(tot.ent===1?'':'s')+'</span>'+(tot.rec?'<span class="ap-pill p-vm">🔄 '+tot.rec+' para recolher</span>':'')+(tot.on?'<span class="ap-pill p-az">🛒 '+tot.on+' online</span>':'')+'<span class="ap-pill p-cz">'+R$(tot.tot)+' em pedidos</span></div>';
+  var lista='';
+  if(_agVis==='mes'){
+    var prim=new Date(_calAno,_calMes,1),ini2=new Date(_calAno,_calMes,1-prim.getDay());
+    html+='<div class="ag-wrap"><div class="ap-card ag-mes"><div class="ag-dows">'+['D','S','T','Q','Q','S','S'].map(function(x,i){return '<div>'+(window.innerWidth>768?['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][i]:x)+'</div>';}).join('')+'</div><div class="ag-grid">';
+    for(var k=0;k<42;k++){var dd=new Date(ini2.getFullYear(),ini2.getMonth(),ini2.getDate()+k),iso=_isoD(dd),c=_agCont(ev[iso]),fora=dd.getMonth()!==_calMes;
+      if(k>=35&&fora&&dd.getDate()<8)break;
+      var n=c.ent+c.on,cl='ag-d'+(fora?' fora':'')+(iso===h?' hoje':'')+(iso===_agData?' sel':'')+(n?' tem':'')+(iso<h&&n&&c.feito<c.ent?' atr':'');
+      html+='<button class="'+cl+'" onclick="_agData=\''+iso+'\';renderCalendario()"><span class="n">'+dd.getDate()+'</span>'
+        +(n?'<span class="q">'+n+'</span><span class="ql">'+(n===1?'entrega':'entregas')+'</span>':'')
+        +((c.rec||c.on)?'<span class="dots">'+(c.rec?'<i class="r"></i>':'')+(c.on?'<i class="o"></i>':'')+'</span>':'')+'</button>';}
+    html+='</div><div class="ag-leg"><span><i class="q"></i>entregas no dia</span><span><i class="r"></i>chopeira para recolher</span><span><i class="o"></i>pedido online</span></div></div>';
+    lista='<div class="ag-dia">'+agDiaHtml(_agData,ev[_agData]||[],true)+'</div></div>';
+    html+=lista;
+  } else {
+    html+='<div class="ag-sem">'+dias.map(function(d){return agDiaHtml(d,ev[d]||[],_agVis==='dia');}).join('')+'</div>';
+  }
+  pg.innerHTML=html;
+}
+function agMover(n){var d=_dDe(_agData||hj());if(_agVis==='mes')d=new Date(d.getFullYear(),d.getMonth()+n,1);else if(_agVis==='semana')d=new Date(d.getFullYear(),d.getMonth(),d.getDate()+7*n);else d=new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);_agData=_isoD(d);renderCalendario();}
+function calMudaMes(n){_agVis='mes';agMover(n);}
+function calHoje(){_agData=hj();renderCalendario();}
+function agDiaHtml(iso,lst,sempreAberto){
+  var d=_dDe(iso),c=_agCont(lst),h=hj();
+  var cab='<div class="ag-dcab'+(iso===h?' hoje':'')+'"><div><b>'+_DSEM[d.getDay()]+', '+d.getDate()+'/'+String(d.getMonth()+1).padStart(2,'0')+'</b>'+(iso===h?' <span class="ap-pill p-az">hoje</span>':'')+'</div><span class="ap-mut">'+(c.ent+c.on?(c.ent+c.on)+' entrega'+((c.ent+c.on)>1?'s':''):'sem entregas')+(c.rec?' · '+c.rec+' para recolher':'')+'</span></div>';
+  if(!lst.length)return '<div class="ap-card ag-bloco">'+cab+(sempreAberto?'<div class="ag-vz">Nenhum pedido para este dia.<br><button class="btn bp bsm" style="margin-top:10px;" onclick="abrirPed();setTimeout(function(){var e=document.getElementById(\'ped-ent\');if(e)e.value=\''+iso+'\';},80)">＋ Novo pedido para este dia</button></div>':'')+'</div>';
+  return '<div class="ap-card ag-bloco">'+cab+lst.map(agItemHtml).join('')+'</div>';
+}
+function agItemHtml(e){
+  if(e.tipo==='online'){var w=e.web;return '<div class="ag-it on" onclick="calAbreEvento({web:_web.find(function(x){return x.id===\''+w.id+'\';})})"><div class="ag-hr az">'+escHtml(w.hora||'--:--')+'</div><div class="ag-it-c"><div class="ag-it-t"><b>🛒 '+escHtml(w.nome||'Pedido online')+'</b><b>'+R$(w.total)+'</b></div><div class="ap-mut ap-ell">📍 '+escHtml(w.local||'')+'</div><div class="ap-mut ap-ell">'+escHtml((w.itens||[]).map(function(i){return i.qty+'× '+i.nome;}).join(', '))+'</div><span class="ap-pill p-az">Aguardando sua confirmação</span></div></div>';}
+  var p=e.ped,cli=DB.clientes.find(function(x){return x.id===p.clienteId;})||{},sl=getSaldo(p),es=entStAtual(p);
+  var rec=e.tipo==='recolher',feito=rec?(!!p.retiradoEm||getStatus(p)==='devolvido'):(es==='entregue'||es==='recolhido'||!!p.entregueEm);
+  var itens=(p.itens||[]).filter(function(i){return !rec||i.tipo==='maquina';}).map(function(i){return i.qty+'× '+_nomeItem(i);}).join(', ');
+  var pill=rec?(feito?'<span class="ap-pill p-vd">✓ Recolhido</span>':'<span class="ap-pill p-vm">🔄 Recolher chopeira</span>'):'<span class="ap-pill '+(feito?'p-vd':(es==='saiu'?'p-az':'p-am'))+'">'+escHtml(entStNome(es))+'</span>';
+  var mapa=p.local?'<a class="ag-b" href="https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(p.local)+'" target="_blank" onclick="event.stopPropagation()">🗺 Rota</a>':'';
+  return '<div class="ag-it'+(feito?' feito':'')+(rec?' rec':'')+'"><div class="ag-hr'+(rec?' vm':'')+'" onclick="verPed(\''+p.id+'\')">'+(rec?'🔄':escHtml(p.horaEntrega||'--:--'))+'</div><div class="ag-it-c">'
+   +'<div class="ag-it-t" onclick="verPed(\''+p.id+'\')"><b>'+escHtml(cli.nome||'—')+' <span class="ap-mut">#'+escHtml(p.num)+'</span></b><b>'+R$(p.total)+'</b></div>'
+   +'<div class="ap-mut ap-ell">📍 '+escHtml(p.local||'local a combinar')+'</div><div class="ap-mut ap-ell">'+escHtml(itens)+'</div>'
+   +'<div class="ag-it-r">'+pill+(sl>0&&!rec?'<span class="ap-pill p-vm">Falta '+R$(sl)+'</span>':'')+(e.semData?'<span class="ap-pill p-cz">sem data de entrega</span>':'')+'</div>'
+   +'<div class="ag-bts"><button class="ag-b" onclick="verPed(\''+p.id+'\')">👁 Ver</button>'+(cli.tel?'<button class="ag-b wa" onclick="_abreWa(\''+escHtml(cli.tel)+'\',\'Olá '+escHtml(String(cli.nome||'').replace(/'/g,''))+'! \')">📲 WhatsApp</button>':'')+mapa
+   +(!rec&&!feito?'<button class="ag-b az" onclick="setEntregaSt(\''+p.id+'\',\''+(es==='saiu'?'entregue':'saiu')+'\',true);renderCalendario()">'+(es==='saiu'?'📦 Entregue':'🚚 Saiu')+'</button>':'')
+   +(rec&&!feito?'<button class="ag-b az" onclick="setEntregaSt(\''+p.id+'\',\'recolhido\',true);renderCalendario()">✓ Recolhido</button>':'')+'</div></div></div>';
+}
+/* ===== PAINEL DO GESTOR (v4.2): visual de aplicativo ===== */
+kpiCards=function(lista){
+  var cores={bl:'#0F2044',gr:'#16A34A',rd:'#DC2626'};
+  var g=_el('div','');g.className='gs-kpis';
+  lista.forEach(function(x){var c=_el('div','');c.className='ap-card gs-kpi gs-'+(x[2]||'bl');c.appendChild(_el('div','font-size:12px;color:#64748B;font-weight:700;',x[0]));var v=_el('div','font-size:20px;font-weight:900;color:'+(cores[x[2]]||'#0F2044')+';margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;',String(x[1]));c.appendChild(v);g.appendChild(c);});
+  return g;
+};
+cardDist=function(r){
+  var st=statusDist(r,r._vendas),rs=cobResumo(r,r._vendas),vm=(r._vendas||{})[mesAt()]||0;
+  var c=_el('div','');c.className='ap-card gs-card';
+  var top=_el('div','');top.className='gs-top';
+  var av=_el('div','');av.innerHTML=_av(r.nome||r.id,46);top.appendChild(av.firstChild);
+  var nm=_el('div','min-width:0;flex:1;');nm.appendChild(_el('div','font-size:16px;font-weight:900;color:#0F2044;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;',String(r.nome||r.id).replace(' (TESTE)','')));
+  nm.appendChild(_el('div','font-size:12px;color:#64748B;','Código '+r.id+(r.responsavel?' · '+r.responsavel:'')));top.appendChild(nm);
+  var pl=_el('div','display:flex;flex-direction:column;align-items:flex-end;gap:4px;');
+  pl.appendChild(_el('span','font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;white-space:nowrap;background:'+st.cor+'22;color:'+st.cor+';',st.rot));
+  if(r.demo===true)pl.appendChild(_el('span','font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:#FEF3C7;color:#92400E;','🧪 TESTE'));
+  top.appendChild(pl);c.appendChild(top);
+  var g=_el('div','');g.className='gs-info';
+  function inf(rot,val,cor){var d=_el('div','');d.appendChild(_el('div','font-size:11px;color:#64748B;',rot));d.appendChild(_el('div','font-size:14px;font-weight:800;color:'+(cor||'#0F2044')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;',val));g.appendChild(d);}
+  inf('Vendeu no mês',R$(vm));inf('Total vendido',R$(r.fat||0));
+  inf('Cobrança',cobDescricao(r).replace('💵 ',''));
+  inf(rs.vencido>0?'Vencido':'Em aberto',R$(rs.vencido>0?rs.vencido:rs.aberto),rs.vencido>0?'#DC2626':(rs.aberto>0?'#92400E':'#16A34A'));
+  inf('Validade',r.expiraEm?new Date(r.expiraEm).toLocaleDateString('pt-BR'):'sem limite');
+  inf('Último acesso',r.ultimoAcesso?new Date(r.ultimoAcesso).toLocaleDateString('pt-BR'):'nunca');
+  c.appendChild(g);
+  var ac=_el('div','');ac.className='ap-acs';
+  function b(t,cl,fn){var x=_el('button','',t);x.className='ap-ac '+(cl||'');x.onclick=fn;ac.appendChild(x);}
+  b('👁 Entrar','az',function(){entrarComoDistribuidora(r.id);});
+  b('💵 Cobrança','vd',function(){abrirCobranca(r);});
+  if(r.telefone)b('📲 WhatsApp','wa',function(){_abreWa(r.telefone,'Olá '+(r.responsavel||'')+'! ');});
+  else b('📊 Detalhes','',function(){distDetalhes(r);});
+  b('⋯','mais',function(){distMenu(r);});
+  c.appendChild(ac);return c;
+};
+function distMenu(r){
+  var d=_el('div','');d.appendChild(_el('div','font-size:13px;color:#64748B;margin:-6px 0 12px;','Código '+r.id));
+  var g=_el('div','');g.className='ap-grid4';d.appendChild(g);var api;
+  function it(ic,t,cl,fn){var b=_el('button','');b.className='ap-gb '+(cl||'');b.innerHTML='<div>'+ic+'</div>'+t;b.onclick=function(){api.fechar();fn();};g.appendChild(b);}
+  it('📊','Detalhes','az',function(){distDetalhes(r);});
+  it('📈','Vendas','az',function(){_vFil.dist=r.id;_mTab='vendas';masterMostra();});
+  it('✏️','Editar','',function(){masterEditar(r);});
+  it('📅','Renovar','vd',function(){masterRenovar(r);});
+  it('🔑','Senha','am',function(){masterResetSenha(r);});
+  it(r.ativo===false?'✅':'⛔',r.ativo===false?'Desbloquear':'Bloquear',r.ativo===false?'vd':'am',function(){masterBloquear(r);});
+  it('🧹','Limpar dados','',function(){masterLimparDados(r);});
+  it('👁','Entrar','az',function(){entrarComoDistribuidora(r.id);});
+  api=dlg(String(r.nome||r.id).replace(' (TESTE)',''),d,[{txt:'Fechar',cls:'bs',fn:function(a){a.fechar();}},{txt:'🗑 Excluir distribuidora',cls:'bd',fn:function(a){a.fechar();masterExcluir(r);}}]);
+}
+(function(){
+  var _mm=masterMostra;masterMostra=function(){var r=_mm.apply(this,arguments);try{var tb=document.getElementById('m-tabs');if(tb)Array.prototype.forEach.call(tb.children,function(b){var on=String(b.getAttribute('style')||'').indexOf('background:#0F2044')>=0;b.removeAttribute('style');b.className='ap-chip'+(on?' on':'');});}catch(e){}return r;};
+  var _rm=renderMaster;renderMaster=function(){var r=_rm.apply(this,arguments);try{var pg=document.getElementById('pg-master'),t=pg&&pg.querySelector('.mtop');if(t){t.classList.add('gs-hero');var tt=t.firstChild;if(tt&&tt.children[1]){tt.children[0].textContent='Painel do Gestor';tt.children[1].textContent='Olá'+((_authUser&&_authUser.nome&&_authUser.nome!=='Gestor')?', '+_authUser.nome.split(' ')[0]:'')+' 👋';}
+    Array.prototype.forEach.call(t.querySelectorAll('.mbtns .btn'),function(b){b.className='gs-hb'+(/Nova distribuidora/.test(b.textContent)?' pri':'');});}}catch(e){}return r;};
 })();
 /* ---- PAINEL DO GESTOR ---- */
 function _soGestor(){return _authUser&&_authUser.isMaster===true;}
