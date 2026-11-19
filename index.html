@@ -1181,8 +1181,8 @@ a.ap-dt-nm:hover{text-decoration:underline;color:#2563EB;}
     <button class="login-btn" onclick="fazerLogin()">Entrar →</button>
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
-    <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão com o Firebase</a></div>
-    <div class="login-version">ChoppMaster ERP v4.7 · 19/11</div>
+    <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão</a></div>
+    <div class="login-version">ChoppMaster ERP v4.8 · 19/11</div>
   </div>
 </div>
 
@@ -2273,7 +2273,7 @@ function renderConfig(){
   h+='<div class="cb"><div style="font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px;margin-bottom:12px;">Complementa quando pedido cont&eacute;m chopeiras. Vari&aacute;veis: <code>{maquina}</code> <code>{entrega}</code> <code>{devolucao}</code></div>';
   h+='<div class="fi"><label>Cl&aacute;usulas de Loca&ccedil;&atilde;o</label>';
   h+='<textarea id="cfg-tl" style="min-height:140px;font-size:13px;line-height:1.6;" placeholder="1. OBJETO: Loca&ccedil;&atilde;o de {maquina}.&#10;2. PRAZO: Entrega {entrega}. Devolu&ccedil;&atilde;o: {devolucao}.">'+escHtml(cfg.termoLocacao||TERMO_LOC_PADRAO)+"</textarea></div><label style=\"display:flex;align-items:center;gap:8px;font-size:13px;margin:0 0 10px;cursor:pointer;\"><input type=\"checkbox\" id=\"cfg-loc-sempre\""+(locSempre(cfg)?" checked":"")+" style=\"width:17px;height:17px;\"> Imprimir as cl&aacute;usulas de loca&ccedil;&atilde;o em todo pedido com termos (desmarque para sair s&oacute; quando o pedido tiver m&aacute;quina)</label><button type=\"button\" class=\"btn bs bsm\" onclick=\"document.getElementById('cfg-tl').value=TERMO_LOC_PADRAO\">↺ Usar o texto padrão</button></div></div>";
-  h+=cfgNuvemHtml();
+  if(_authUser&&_authUser.isMaster===true)h+=cfgNuvemHtml();
   h+=cfgPedidoOnlineHtml(cfg);
   if(false){
   var fbSt=_fbUid&&_fbLastSaved?'<span style="background:#dcfce7;color:#166534;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:700;">&#9679; Conectado</span>':'<span style="background:#fee2e2;color:#991b1b;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:700;">&#9675; Desconectado</span>';
@@ -2329,13 +2329,13 @@ function salvaConfig(){
       fbLoad(function(success){
         // [prod]
         if(success){
-          toast("Firebase conectado! Dados sincronizados","ok");
+          toast("Conectado! Dados sincronizados","ok");
         } else {
           toast("Erro ao carregar dados da nuvem","err");
         }
       });
     } else {
-      toast("Erro ao inicializar Firebase — verifique credenciais","err");
+      toast("Erro ao conectar com o servidor","err");
     }
   } else {
     toast("Configurações salvas!","ok");
@@ -3686,7 +3686,7 @@ function fbSave(){
       if(_fbDirty===marca)_fbDirty=0;else{clearTimeout(_fbSaveT);_fbSaveT=setTimeout(fbSave,800);}
       fbStatus('✓ Nuvem sincronizada','#166534');_fbErrAvisado=0;
     } else {
-      r.text().then(function(t){fbStatus('Erro: '+r.status,'#dc2626');console.warn('fbSave erro:',t);
+      r.text().then(function(t){fbStatus((_authUser&&_authUser.isMaster)?'Erro: '+r.status:'Erro ao salvar — tentando de novo','#dc2626');console.warn('fbSave erro:',t);
         var grande=corpo.length>1000000||/too large|exceeds|maximum/i.test(t);
         if(Date.now()-_fbErrAvisado>60000){_fbErrAvisado=Date.now();toast(grande?'⚠️ Não salvou na nuvem: os dados passaram do limite de tamanho. Fale com o gestor.':'⚠️ Não salvou na nuvem (erro '+r.status+'). Suas alterações estão guardadas neste aparelho e serão enviadas de novo.','err');}
         clearTimeout(_fbSaveT);_fbSaveT=setTimeout(fbSave,20000);});
@@ -3723,7 +3723,7 @@ function fbLoad(callback){
 /* Inicializar Firebase com as credenciais atuais */
 function fbInit(){
   var url=fbUrl();
-  if(!url){fbStatus('Firebase não configurado','#6b7280');return false;}
+  if(!url){fbStatus('Modo local','#6b7280');return false;}
   fbStatus('Conectando à nuvem...','#854d0e');
   fbStartPoll();
   return true;
@@ -3959,7 +3959,7 @@ function enviarAprovacao(id){
     a.style.cssText='display:inline-flex;align-items:center;gap:8px;background:#25D366;color:#fff;padding:9px 16px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;';
     a.textContent='📱 Enviar pelo WhatsApp'; box.appendChild(a);
     openM('mlink'); renderPeds();
-  }).catch(function(e){toast('Não foi possível gerar o link ('+e.message+'). Verifique o Firebase.','err');});
+  }).catch(function(e){toast('Não foi possível gerar o link ('+e.message+'). Verifique a internet.','err');});
 }
 var _aprUltimo=0;
 function verificarAprovacoes(){
@@ -4164,9 +4164,9 @@ async function loginDistribuidora(cod,loginVal,senhaVal){
       if(_rg&&_rg.demo!==true){
         try{var _dd=_st[dataPathDist(cod)];if(_dd)await fsPatch(dataPathDist(cod),fsFields(_dd));await fsPatch('gestao_distribuidoras/'+cod,fsFields(_rg));
           delete _st['gestao_distribuidoras/'+cod];delete _st[dataPathDist(cod)];demoSave(_st);d=await fsGet('gestao_distribuidoras/'+cod);}
-        catch(e2){return {erro:'Esta distribuidora foi cadastrada no modo de teste e o Firebase recusou o envio ('+(e2.message||e2)+'). Toque em "Testar conexão com o Firebase" abaixo.'};}
+        catch(e2){return {erro:'Esta distribuidora foi cadastrada no modo de teste e o servidor recusou o envio ('+(e2.message||e2)+'). Toque em "Testar conexão" abaixo.'};}
       }
-      if(!d) return {erro:'Código de distribuidora não encontrado no Firebase. Se ela foi cadastrada no modo de teste, entre neste mesmo aparelho em que cadastrou.',falha:true};
+      if(!d) return {erro:'Código de distribuidora não encontrado. Se ela foi cadastrada no modo de teste, entre neste mesmo aparelho em que cadastrou.',falha:true};
     }
     reg=regParse(d);}catch(e){offline=true;_erroFb=e.message||String(e);}
   if(reg){var st=statusDist(reg);if(st.bloqueada) return {erro:st.msg};}
@@ -4174,7 +4174,7 @@ async function loginDistribuidora(cod,loginVal,senhaVal){
     try{var dd=await fsGet(dataPathDist(cod));if(dd&&dd.fields){dados={};Object.keys(dd.fields).forEach(function(k){dados[k]=fromFirestore(dd.fields[k]);});}}catch(e){offline=true;}
   }
   if(!dados){var loc=localStorage.getItem('cm_dist_'+cod);if(loc){try{dados=JSON.parse(loc);}catch(e){}}}
-  if(!dados) return {erro:offline?('Não consegui falar com o Firebase'+(_erroFb?' ('+_erroFb+')':'')+'. Toque em "Testar conexão com o Firebase" abaixo.'):'Distribuidora sem dados. Fale com o gestor.'};
+  if(!dados) return {erro:offline?('Não consegui falar com o servidor'+(_erroFb?' ('+_erroFb+')':'')+'. Toque em "Testar conexão" abaixo.'):'Distribuidora sem dados. Fale com o gestor.'};
   if(reg){var st2=statusDist(reg,vendasPorMes(dados.pedidos));if(st2.bloqueada) return {erro:st2.msg};}
   var us=(dados.usuarios||[]).filter(function(u){return String(u.login||'').toLowerCase()===loginVal&&u.ativo!==false;})[0];
   if(!us||!(await confereSenha(senhaVal,us.senhaHash))) return {erro:'Código, login ou senha incorretos.',falha:true};
@@ -4546,7 +4546,7 @@ function abrirRecibo(r,l){
       if(tipo==='print'){reciboImprimir(x.snap);}
       else if(tipo==='wa'){var f=_foneWa(tel.input.value);if(f.length<12){mostraMsg(m,'Informe o WhatsApp com DDD.');}else{var uw1='https://wa.me/'+f+'?text='+encodeURIComponent(texto(x));if(wj)wj.location.href=uw1;else window.open(uw1,'_blank');}}
       else if(tipo==='mail'){var em=mail.input.value.trim();if(!/^\S+@\S+\.\S+$/.test(em)){mostraMsg(m,'Informe um e-mail válido.');}else{var ah=document.createElement('a');ah.href='mailto:'+encodeURIComponent(em).replace('%40','@')+'?subject='+encodeURIComponent('Recibo nº '+x.snap.num+' — '+x.snap.emissor.nome)+'&body='+encodeURIComponent(texto(x).replace(/\*/g,''));document.body.appendChild(ah);ah.click();document.body.removeChild(ah);}}
-      if(!x.link)mostraMsg(m,'O link do recibo não pôde ser criado (verifique as regras do Firebase). A mensagem vai só com o texto.');
+      if(!x.link)mostraMsg(m,'O link do recibo não pôde ser criado (verifique a internet). A mensagem vai só com o texto.');
     }catch(e){if(wj){try{wj.close();}catch(e2){}}mostraMsg(m,'Erro: '+e.message);}
     busy=false;
   }
@@ -4813,7 +4813,7 @@ function olhoSenhaTodos(raiz){try{(raiz||document).querySelectorAll('input[type=
 async function testarConexao(){
   var cr=fbCred(),c=_el('div','');
   function lin(t,cor){c.appendChild(_el('p','margin:0 0 8px;font-size:13px;line-height:1.55;color:'+(cor||'#334155')+';',t));}
-  lin('Projeto: '+cr.pid);
+  if(_authUser&&_authUser.isMaster)lin('Projeto: '+cr.pid);
   var api=dlg('🔌 Teste de conexão',c,[{txt:'Fechar',cls:'bp',fn:function(a){a.fechar();}}]);
   var st=_el('p','margin:0;font-size:13px;color:#64748B;','Testando...');c.appendChild(st);
   function explica(code,txt){
@@ -4821,7 +4821,7 @@ async function testarConexao(){
     if(/API key not valid|API_KEY_INVALID/i.test(txt))return 'A chave de API não é válida para este projeto.';
     if(/CONSUMER_INVALID|has not been used|SERVICE_DISABLED|disabled/i.test(txt))return 'O projeto não existe com esse nome, ou o Firestore não está ligado nele.';
     if(/referer|referrer|blocked|API_KEY_HTTP_REFERRER_BLOCKED|API_KEY_SERVICE_BLOCKED/i.test(txt))return 'A chave de API está com restrição e não aceita este site.';
-    if(code===403)return 'As REGRAS do Firebase não liberam o acesso. Confira se foram publicadas neste projeto.';
+    if(code===403)return 'O servidor não liberou o acesso (regras de segurança). Avise o gestor.';
     if(code===404)return 'O banco de dados Firestore ainda não foi criado neste projeto (no console: Firestore Database → Criar banco de dados).';
     return 'Erro '+code+'.';
   }
@@ -4830,12 +4830,12 @@ async function testarConexao(){
   st.remove();
   if(code!==200){lin('❌ LER: falhou. '+explica(code,txt),'#991B1B');lin('Detalhe técnico: '+code+' '+txt.replace(/\s+/g,' ').slice(0,220),'#94A3B8');return;}
   var docs=[];try{docs=(JSON.parse(txt).documents||[]).map(function(d){return d.name.split('/').pop();}).filter(function(x){return x.charAt(0)!=='_';});}catch(e){}
-  lin('✅ LER: funcionando. Distribuidoras no Firebase: '+(docs.length?docs.join(', '):'nenhuma ainda.'),'#065F46');
+  lin('✅ LER: funcionando.','#065F46');
   code=0;txt='';
   try{var w=await _fetchReal(base+'gestao_distribuidoras/_teste_conexao'+k,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields:{quando:{stringValue:new Date().toISOString()}}})});code=w.status;txt=await w.text();}catch(e){code=0;txt=String(e);}
   if(code===200)lin('✅ GRAVAR: funcionando.','#065F46');else{lin('❌ GRAVAR: falhou. '+explica(code,txt),'#991B1B');lin('Detalhe técnico: '+code+' '+txt.replace(/\s+/g,' ').slice(0,220),'#94A3B8');}
   var loc=[];try{loc=demoLocaisReais();}catch(e){}
-  if(loc.length)lin('📱 Guardadas só neste aparelho (cadastradas no modo de teste): '+loc.map(function(x){return x.nome+' ('+x.id+')';}).join(', ')+'. Elas são enviadas ao Firebase quando você faz o login delas aqui, ou abrindo o sistema pelo endereço normal (sem “?teste=1”).','#92400E');
+  if(loc.length)lin('📱 Guardadas só neste aparelho (cadastradas no modo de teste): '+loc.map(function(x){return x.nome+' ('+x.id+')';}).join(', ')+'. Elas são enviadas ao servidor quando você faz o login delas aqui, ou abrindo o sistema pelo endereço normal (sem “?teste=1”).','#92400E');
 }
 /* ---- CADASTRO DE NOVA DISTRIBUIDORA POR LINK (página pública + validação do gestor) ---- */
 function linkCadastro(){return linkSistema()+'?cadastro=1';}
@@ -5242,7 +5242,7 @@ function webAtualizaTela(){
   var pc=document.getElementById('pg-clientes');if(pc&&pc.style.display!=='none')renderWebCli();
   var pk=document.getElementById('pg-calendario');if(pk&&pk.style.display!=='none'){try{renderCalendario();}catch(e){}}
 }
-function _avisoRegras(){return _el('div','background:#FEF3C7;border:1px solid #FCD34D;color:#92400E;border-radius:8px;padding:10px 12px;font-size:12px;margin-bottom:12px;line-height:1.5;','⚠️ Não consegui ler os pedidos online e cadastros enviados pelos clientes ('+_webErro+'). Peça ao gestor para atualizar as regras do Firebase.');}
+function _avisoRegras(){return _el('div','background:#FEF3C7;border:1px solid #FCD34D;color:#92400E;border-radius:8px;padding:10px 12px;font-size:12px;margin-bottom:12px;line-height:1.5;',(_authUser&&_authUser.isMaster?'⚠️ Não consegui ler os pedidos online e cadastros enviados pelos clientes ('+_webErro+'). Confira as regras do Firebase.':'⚠️ Não foi possível carregar os pedidos online agora. Tente de novo em alguns minutos; se continuar, avise o gestor.'));}
 function renderWebPed(){
   var pg=document.getElementById('pg-pedidos');if(!pg)return;var old=document.getElementById('web-area');if(old)old.remove();
   var ps=webPend('pedido');if(!ps.length&&!_webErro)return;
