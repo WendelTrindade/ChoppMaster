@@ -1182,7 +1182,7 @@ a.ap-dt-nm:hover{text-decoration:underline;color:#2563EB;}
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão</a></div>
-    <div class="login-version">ChoppMaster ERP v5.1 · 19/11</div>
+    <div class="login-version">ChoppMaster ERP v5.2 · 19/11</div>
   </div>
 </div>
 
@@ -3835,6 +3835,7 @@ async function salvarUsuario(){
   if(!u){u={id:uid()};DB.usuarios.push(u);}
   u.nome=nome;u.login=login;u.admin=admin;u.ativo=ativo;u.modulos=mods;
   if(senha){u.senhaHash=await hashSenhaNova(senha);u.mustChange=!(_authUser&&_authUser.id===u.id);}
+  try{await authSyncUsuario(u,senha);}catch(e){var _t=_authErroTipo(e);if(_t!=='naoativado'&&_t!=='rede')toast('Atenção: o acesso seguro deste usuário não foi criado ('+e.message+'). Tente salvar de novo.','err');}
   saveDB(); closeM('mu'); renderUsuarios(); toast('Usuário salvo!','ok');
 }
 function excluirUsuario(id){
@@ -3843,6 +3844,7 @@ function excluirUsuario(id){
   if(u.admin&&!DB.usuarios.some(function(x){return x.id!==id&&x.admin&&x.ativo!==false;})){toast('Precisa existir pelo menos um administrador.','err');return;}
   if(!confirm('Excluir o usuário "'+(u.nome||u.login)+'"?')) return;
   DB.usuarios=DB.usuarios.filter(function(x){return x.id!==id;});
+  if(u.fbUid)fsDelete('acessos/'+u.fbUid).catch(function(){});
   saveDB(); closeM('mu'); renderUsuarios(); toast('Usuário excluído.','ok');
 }
 function toggleBottomMore(){ toggleSB(); }
@@ -4159,7 +4161,7 @@ function copiar(txt){try{navigator.clipboard.writeText(txt);toast('Copiado!','ok
 function linkSistema(){return window.location.href.split('?')[0].split('#')[0];}
 
 /* ---- login ---- */
-async function loginDistribuidora(cod,loginVal,senhaVal){
+async function loginDistribuidora(cod,loginVal,senhaVal,jaAut){
   var reg=null, offline=false, dados=null;
   var _erroFb='';
   try{var d=await fsGet('gestao_distribuidoras/'+cod);
@@ -4181,7 +4183,7 @@ async function loginDistribuidora(cod,loginVal,senhaVal){
   if(!dados) return {erro:offline?('Não consegui falar com o servidor'+(_erroFb?' ('+_erroFb+')':'')+'. Toque em "Testar conexão" abaixo.'):'Distribuidora sem dados. Fale com o gestor.'};
   if(reg){var st2=statusDist(reg,vendasPorMes(dados.pedidos));if(st2.bloqueada) return {erro:st2.msg};}
   var us=(dados.usuarios||[]).filter(function(u){return String(u.login||'').toLowerCase()===loginVal&&u.ativo!==false;})[0];
-  if(!us||!(await confereSenha(senhaVal,us.senhaHash))) return {erro:'Código, login ou senha incorretos.',falha:true};
+  if(!us||(!jaAut&&!(await confereSenha(senhaVal,us.senhaHash)))) return {erro:'Código, login ou senha incorretos.',falha:true};
   return {ok:true,user:us,dados:dados,reg:reg};
 }
 
@@ -4207,6 +4209,7 @@ async function fazerLogin(){
     var sess=null,_eqU=null;
     if(!cod&&loginVal==='master'){
       if(!(await confereSenha(senhaVal,_MASTER_SENHA_HASH))) return falha('Login ou senha incorretos.');
+      await authGestorEntrar(senhaVal);
       _isMaster=true;_viewAs=null;_distId=null;loadDB();
       sess={id:'master',nome:'Gestor',login:'master',admin:true,isMaster:true,
         modulos:['dashboard','calendario','pedidos','financeiro','produtos','maquinas','clientes','config','master'],distId:null};
@@ -4313,6 +4316,7 @@ function abrirTrocaSenha(obrigatoria){
     if(n1.input.value.toLowerCase()===String(u.login).toLowerCase()) return mostraMsg(m,'A senha não pode ser igual ao login.');
     if(!obrigatoria&&!(await confereSenha(atual.input.value,u.senhaHash))) return mostraMsg(m,'Senha atual incorreta.');
     if(await confereSenha(n1.input.value,u.senhaHash)) return mostraMsg(m,'Escolha uma senha diferente da atual.');
+    if(_fbAuth&&u.fbUid&&_fbAuth.uid===u.fbUid){try{await authSyncUsuario(u,n1.input.value);}catch(e){return mostraMsg(m,'Não foi possível trocar a senha no servidor ('+e.message+'). Verifique a internet.');}}
     u.senhaHash=await hashSenhaNova(n1.input.value);u.mustChange=false;
     saveDB();api.fechar();toast('Senha alterada com sucesso!','ok');
   }}];
@@ -6270,15 +6274,18 @@ function equipeForm(u,L,depois){
     c.appendChild(bx);});
   var m=msgEl();c.appendChild(m);
   var bts=[{txt:'Cancelar',cls:'bs',fn:function(a){a.fechar();}}];
-  if(!novo)bts.push({txt:'🗑 Excluir',cls:'bd',fn:function(a){if(!confirm('Excluir o usuário "'+u.nome+'"? Ele não vai mais conseguir entrar.'))return;var nl=L.filter(function(x){return x.id!==u.id;});equipeGravar(nl).then(function(){L.length=0;nl.forEach(function(x){L.push(x);});a.fechar();toast('Usuário excluído.','ok');depois();}).catch(function(e){mostraMsg(m,'Erro: '+e.message);});}});
+  if(!novo)bts.push({txt:'🗑 Excluir',cls:'bd',fn:function(a){if(!confirm('Excluir o usuário "'+u.nome+'"? Ele não vai mais conseguir entrar.'))return;var nl=L.filter(function(x){return x.id!==u.id;});if(u.fbUid)fsDelete('acessos/'+u.fbUid).catch(function(){});equipeGravar(nl).then(function(){L.length=0;nl.forEach(function(x){L.push(x);});a.fechar();toast('Usuário excluído.','ok');depois();}).catch(function(e){mostraMsg(m,'Erro: '+e.message);});}});
   bts.push({txt:'Salvar',cls:'bp',fn:async function(a){
     var n=nm.input.value.trim(),l=lg.input.value.trim().toLowerCase().replace(/\s+/g,''),s=sn.input.value;
     if(!n)return mostraMsg(m,'Informe o nome.');if(!l||l==='master'||l==='admin')return mostraMsg(m,'Escolha outro login.');
     if(L.some(function(x){return x.id!==u.id&&String(x.login).toLowerCase()===l;}))return mostraMsg(m,'Já existe um usuário com esse login.');
     if((novo||s)&&s.length<6)return mostraMsg(m,'A senha precisa ter pelo menos 6 caracteres.');
     var perms=Object.keys(cks).filter(function(k){return cks[k].checked;});if(!perms.some(function(p){return p.indexOf('ver_')===0;}))return mostraMsg(m,'Marque pelo menos uma aba que ele pode ver.');
-    var x={id:u.id,nome:n,login:l,perms:perms,ativo:ac.checked,senhaHash:u.senhaHash||'',criadoEm:u.criadoEm||new Date().toISOString()};
-    try{if(s)x.senhaHash=await hashSenhaNova(s);var nl=L.filter(function(y){return y.id!==u.id;}).concat([x]).sort(function(p,q){return String(p.nome).localeCompare(String(q.nome));});
+    var x={id:u.id,nome:n,login:l,perms:perms,ativo:ac.checked,senhaHash:u.senhaHash||'',fbUid:u.fbUid||'',criadoEm:u.criadoEm||new Date().toISOString()};
+    try{if(s)x.senhaHash=await hashSenhaNova(s);
+      if(s){try{var _ac=await authContaPara('',l,s,{papel:'equipe',nome:n,perms:perms,ativo:ac.checked,eqId:x.id,antigoUid:u.fbUid});x.fbUid=_ac.uid;}catch(e){var _t=_authErroTipo(e);if(_t!=='naoativado'&&_t!=='rede')throw e;}}
+      else if(x.fbUid){try{await fsPatch('acessos/'+x.fbUid,fsFields({perms:perms,ativo:ac.checked,nome:n}),['perms','ativo','nome']);}catch(e){}}
+      var nl=L.filter(function(y){return y.id!==u.id;}).concat([x]).sort(function(p,q){return String(p.nome).localeCompare(String(q.nome));});
       await equipeGravar(nl);L.length=0;nl.forEach(function(y){L.push(y);});a.fechar();depois();
       if(s&&novo&&confirm('Usuário salvo! Quer copiar os dados de acesso para enviar a ele?'))copiar('Acesso ao Painel ChoppMaster\nEndereço: '+linkSistema()+'\nCódigo da distribuidora: deixe em branco\nLogin: '+l+'\nSenha: '+s);
       else toast('Usuário salvo.','ok');
@@ -6526,6 +6533,259 @@ function agAbrirDia(iso){
       if(m&&!b.closest('.ag-vis,.ag-nav'))b.setAttribute('onclick',"agAbrirDia('"+m[1]+"')");});}catch(e){}
     return r;};
 })();
+/* ===== v5.2 — LOGIN SEGURO COM FIREBASE AUTHENTICATION =====
+   Cada pessoa tem uma conta no Firebase. O banco só entrega dados para quem está logado
+   e tem permissão (documento acessos/{uid}). Contas antigas migram sozinhas no primeiro login. */
+var _AUTH_DOM='choppmaster.app',_GESTOR_EMAIL='gestor@'+_AUTH_DOM;
+var _fbAuth=null;try{_fbAuth=JSON.parse(sessionStorage.getItem('cm_fbauth')||'null');}catch(e){}
+function _authSalva(){try{if(_fbAuth)sessionStorage.setItem('cm_fbauth',JSON.stringify(_fbAuth));else sessionStorage.removeItem('cm_fbauth');}catch(e){}}
+function _authSair(){_fbAuth=null;_authSalva();}
+function _idtk(metodo,body){
+  return _fetchReal('https://identitytoolkit.googleapis.com/v1/accounts:'+metodo+'?key='+encodeURIComponent(fbCred().key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(function(r){return r.json().catch(function(){return {};}).then(function(j){if(!r.ok){var m=(j&&j.error&&j.error.message)||('HTTP '+r.status);var e=new Error(m);e.codigo=String(m).split(/[ :]/)[0];throw e;}return j;});});
+}
+function _authDeResp(j){return {tok:j.idToken,ref:j.refreshToken,exp:Date.now()+(parseInt(j.expiresIn||'3600',10)-120)*1000,uid:j.localId,email:j.email};}
+function authEntrarEmail(email,senha){return _idtk('signInWithPassword',{email:email,password:senha,returnSecureToken:true}).then(_authDeResp);}
+function authCriarEmail(email,senha){return _idtk('signUp',{email:email,password:senha,returnSecureToken:true}).then(_authDeResp);}
+function _authErroTipo(e){var c=(e&&e.codigo)||'';if(!c)return 'rede';
+  if(/INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND|USER_NOT_FOUND|INVALID_EMAIL/.test(c))return 'cred';
+  if(/USER_DISABLED/.test(c))return 'desativado';if(/TOO_MANY_ATTEMPTS/.test(c))return 'muitas';
+  if(/EMAIL_EXISTS/.test(c))return 'existe';if(/WEAK_PASSWORD/.test(c))return 'fraca';
+  if(/CONFIGURATION_NOT_FOUND|OPERATION_NOT_ALLOWED|PASSWORD_LOGIN_DISABLED|ADMIN_ONLY_OPERATION|API_KEY|PROJECT|HTTP/.test(c))return 'naoativado';
+  return 'outro';}
+var _authRefP=null;
+function fbAuthToken(){
+  if(!_fbAuth)return Promise.resolve(null);
+  if(_fbAuth.exp>Date.now())return Promise.resolve(_fbAuth.tok);
+  if(_authRefP)return _authRefP;
+  _authRefP=_fetchReal('https://securetoken.googleapis.com/v1/token?key='+encodeURIComponent(fbCred().key),{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(_fbAuth.ref)})
+    .then(function(r){return r.json().then(function(j){if(!r.ok||!j.id_token)throw new Error('refresh');_fbAuth.tok=j.id_token;_fbAuth.ref=j.refresh_token||_fbAuth.ref;_fbAuth.exp=Date.now()+(parseInt(j.expires_in||'3600',10)-120)*1000;_authSalva();return _fbAuth.tok;});})
+    .catch(function(){return _fbAuth?_fbAuth.tok:null;}).then(function(t){_authRefP=null;return t;});
+  return _authRefP;
+}
+/* toda chamada ao banco do ChoppMaster leva o "crachá" (token) de quem está logado */
+(function(){var _f=window.fetch;window.fetch=function(url,opt){
+  var u=typeof url==='string'?url:((url&&url.url)||'');
+  if(!_fbAuth||u.indexOf('firestore.googleapis.com')<0||u.indexOf('/projects/'+encodeURIComponent(fbCred().pid)+'/')<0)return _f.apply(this,arguments);
+  var self=this;return fbAuthToken().then(function(t){var o={};Object.keys(opt||{}).forEach(function(k){o[k]=opt[k];});var hd={},h0=o.headers||{};
+    if(typeof Headers!=='undefined'&&h0 instanceof Headers)h0.forEach(function(v,k){hd[k]=v;});else Object.keys(h0).forEach(function(k){hd[k]=h0[k];});
+    if(t)hd['Authorization']='Bearer '+t;o.headers=hd;return _f.call(self,url,o);});
+};})();
+function _lgSlug(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9._-]/g,'-').replace(/^[.\-]+|[.\-]+$/g,'')||'u';}
+function emailPadrao(cod,login){return _lgSlug(login)+'@'+(cod?_lgSlug(cod):'equipe')+'.'+_AUTH_DOM;}
+function emailNovo(cod,login){return _lgSlug(login)+'.'+reciboToken().slice(0,6)+'@'+(cod?_lgSlug(cod):'equipe')+'.'+_AUTH_DOM;}
+function chaveLogin(cod,login){return (cod||'_eq')+'__'+_lgSlug(login);}
+async function emailDoLogin(cod,login){try{var d=await fsGet('logins/'+chaveLogin(cod,login));if(d&&d.fields&&d.fields.email)return fromFirestore(d.fields.email);}catch(e){}return emailPadrao(cod,login);}
+async function _acessoLer(uid){try{var d=await fsGet('acessos/'+uid);return d?regParse(d):null;}catch(e){return null;}}
+async function _acessoGravar(uid,cod,login,email,acc){
+  var doc={cod:cod||'',login:login,email:email,papel:acc.papel,nome:acc.nome||login,ativo:acc.ativo!==false,atualizadoEm:new Date().toISOString()};
+  if(acc.perms)doc.perms=acc.perms;if(acc.eqId)doc.eqId=acc.eqId;
+  await fsPatch('acessos/'+uid,fsFields(doc));
+  await fsPatch('logins/'+chaveLogin(cod,login),fsFields({email:email,cod:cod||'',login:login}));
+}
+/* cria a conta de OUTRA pessoa (gestor criando distribuidora, admin criando usuário, senha provisória) */
+async function authContaPara(cod,login,senha,acc){
+  var email=emailNovo(cod,login),n=await authCriarEmail(email,senha);
+  await _acessoGravar(n.uid,cod,login,email,acc);
+  if(acc.antigoUid&&acc.antigoUid!==n.uid){try{await fsDelete('acessos/'+acc.antigoUid);}catch(e){}}
+  return {uid:n.uid,email:email};
+}
+function _authGuardaUid(cod,dados){try{fsPatch(dataPathDist(cod),{usuarios:toFirestore(dados.usuarios||[])},['usuarios']).catch(function(){});}catch(e){}}
+/* ---- login da distribuidora ---- */
+(function(){
+  var _ld=loginDistribuidora;
+  loginDistribuidora=async function(cod,login,senha){
+    _authSair();
+    var email=await emailDoLogin(cod,login),a=null,tipo='';
+    try{a=await authEntrarEmail(email,senha);}catch(e){tipo=_authErroTipo(e);}
+    if(a){
+      _fbAuth=a;_authSalva();
+      var acc=await _acessoLer(a.uid);
+      if(acc&&(acc.ativo===false||acc.cod!==cod)){_authSair();return {erro:'Este acesso está desativado. Fale com o administrador.'};}
+      var r=await _ld(cod,login,senha,true);
+      if(!r.ok){_authSair();return r;}
+      if(!acc){try{await _acessoGravar(a.uid,cod,r.user.login,email,{papel:r.user.admin?'admin':'usuario',nome:r.user.nome});}catch(e){}}
+      if(r.user.fbUid!==a.uid||r.user.fbEmail!==email){r.user.fbUid=a.uid;r.user.fbEmail=email;_authGuardaUid(cod,r.dados);}return r;
+    }
+    if(tipo==='desativado')return {erro:'Este acesso está desativado. Fale com o administrador.'};
+    if(tipo==='muitas')return {erro:'Muitas tentativas erradas. Aguarde alguns minutos e tente de novo.'};
+    if(tipo==='cred'){
+      var r2=await _ld(cod,login,senha,false);
+      if(!r2.ok){if(/403|401|servidor/i.test(r2.erro||''))return {erro:'Código, login ou senha incorretos. Se você ainda não entrou depois da atualização de segurança, peça uma nova senha ao gestor.',falha:true};return r2;}
+      // senha antiga confere: cria a conta segura agora (migração automática)
+      try{var n=await authCriarEmail(email,senha);_fbAuth=n;_authSalva();
+        await _acessoGravar(n.uid,cod,r2.user.login,email,{papel:r2.user.admin?'admin':'usuario',nome:r2.user.nome});
+        r2.user.fbUid=n.uid;r2.user.fbEmail=email;_authGuardaUid(cod,r2.dados);
+      }catch(e){var t2=_authErroTipo(e);if(t2==='existe'){_authSair();return {erro:'Código, login ou senha incorretos.',falha:true};}}
+      return r2;
+    }
+    return _ld(cod,login,senha,false);   // Firebase Auth ainda não ativado ou sem internet: modo antigo
+  };
+  var _eqA=equipeAchar;
+  equipeAchar=async function(login,senha){
+    _authSair();
+    var email=await emailDoLogin('',login),a=null,tipo='';
+    try{a=await authEntrarEmail(email,senha);}catch(e){tipo=_authErroTipo(e);}
+    if(a){_fbAuth=a;_authSalva();var acc=await _acessoLer(a.uid);
+      if(!acc||acc.papel!=='equipe'||acc.ativo===false){_authSair();return null;}
+      return {id:acc.eqId||a.uid,nome:acc.nome,login:acc.login,perms:acc.perms||[],fbUid:a.uid};}
+    if(tipo==='desativado')return null;
+    var u=await _eqA(login,senha);
+    if(u&&tipo==='cred'){try{var n=await authCriarEmail(email,senha);_fbAuth=n;_authSalva();
+      await _acessoGravar(n.uid,'',u.login,email,{papel:'equipe',nome:u.nome,perms:u.perms||[],eqId:u.id,ativo:true});
+      var l=await equipeLer();l.forEach(function(x){if(x.id===u.id)x.fbUid=n.uid;});await equipeGravar(l);}catch(e){}}
+    return u;
+  };
+  var _lo=fazerLogout;fazerLogout=function(){_authSair();return _lo.apply(this,arguments);};
+})();
+/* ---- gestor ---- */
+async function authGestorEntrar(senha){
+  try{_fbAuth=await authEntrarEmail(_GESTOR_EMAIL,senha);_authSalva();return true;}
+  catch(e){var t=_authErroTipo(e);
+    if(t==='cred'){try{_fbAuth=await authCriarEmail(_GESTOR_EMAIL,senha);_authSalva();return true;}catch(e2){}}
+    _authSair();return false;}
+}
+/* ---- usuários da distribuidora (Configurações > Usuários) ---- */
+async function authSyncUsuario(u,senha){
+  var cod=_distId;if(!cod||!u)return;
+  var acc={papel:u.admin?'admin':'usuario',nome:u.nome,ativo:u.ativo!==false,antigoUid:u.fbUid};
+  if(senha){
+    if(_fbAuth&&u.fbUid&&_fbAuth.uid===u.fbUid&&_authUser&&_authUser.id===u.id){var j=await _idtk('update',{idToken:await fbAuthToken(),password:senha,returnSecureToken:true});_fbAuth=_authDeResp(Object.assign({email:_fbAuth.email,localId:_fbAuth.uid},j));_authSalva();return;}
+    var c=await authContaPara(cod,u.login,senha,acc);u.fbUid=c.uid;u.fbEmail=c.email;return;
+  }
+  if(u.fbUid){await fsPatch('acessos/'+u.fbUid,fsFields({papel:acc.papel,nome:acc.nome,ativo:acc.ativo,login:u.login}),['papel','nome','ativo','login']);
+    if(u.fbEmail)await fsPatch('logins/'+chaveLogin(cod,u.login),fsFields({email:u.fbEmail,cod:cod,login:u.login}));}
+}
+/* ---- painel de segurança do gestor ---- */
+function regrasFirestore(uidGestor){return [
+"rules_version = '2';",
+"service cloud.firestore {",
+"  match /databases/{database}/documents {",
+"    function logado() { return request.auth != null; }",
+"    function gestor() { return logado() && request.auth.uid == '"+uidGestor+"'; }",
+"    function temAcesso() { return logado() && exists(/databases/$(database)/documents/acessos/$(request.auth.uid)); }",
+"    function acesso() { return get(/databases/$(database)/documents/acessos/$(request.auth.uid)).data; }",
+"    function ativo() { return temAcesso() && acesso().get('ativo', true) != false; }",
+"    function equipe() { return ativo() && acesso().get('papel', '') == 'equipe'; }",
+"    function painel() { return gestor() || equipe(); }",
+"    function distAtiva(cod) { return get(/databases/$(database)/documents/gestao_distribuidoras/$(cod)).data.get('ativo', true) != false; }",
+"    function daDist(cod) { return ativo() && acesso().get('cod', '') == cod && distAtiva(cod); }",
+"    function adminDa(cod) { return daDist(cod) && acesso().get('papel', '') == 'admin'; }",
+"    function so(campos) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(campos); }",
+"",
+"    // O gestor pode tudo",
+"    match /{caminho=**} { allow read, write: if gestor(); }",
+"",
+"    // Quem pode acessar o quê",
+"    match /acessos/{uid} {",
+"      allow get: if logado() && (request.auth.uid == uid || painel() || adminDa(resource.data.get('cod', '')));",
+"      allow list: if painel();",
+"      allow create: if (equipe() && request.resource.data.get('papel', '') != 'equipe')",
+"                    || (adminDa(request.resource.data.get('cod', '')) && request.resource.data.get('papel', '') in ['admin', 'usuario']);",
+"      allow update: if (equipe() && resource.data.get('papel', '') != 'equipe' && request.resource.data.get('papel', '') != 'equipe')",
+"                    || (adminDa(resource.data.get('cod', '')) && request.resource.data.get('cod', '') == resource.data.get('cod', '') && request.resource.data.get('papel', '') in ['admin', 'usuario']);",
+"      allow delete: if (equipe() && resource.data.get('papel', '') != 'equipe') || adminDa(resource.data.get('cod', ''));",
+"    }",
+"    // Endereço de login (não tem senha nem dados)",
+"    match /logins/{chave} {",
+"      allow get: if true;",
+"      allow write: if equipe() || (ativo() && acesso().get('papel', '') == 'admin' && chave.split('__')[0] == acesso().get('cod', ''));",
+"    }",
+"    // Cadastro das distribuidoras, avisos e controle do gestor",
+"    match /gestao_distribuidoras/{doc} {",
+"      allow get: if painel() || daDist(doc) || (doc == '_avisos' && ativo());",
+"      allow list: if painel();",
+"      allow create: if (equipe() && doc != '_equipe') || (doc.matches('_cad_.*') && request.resource.data.size() < 40);",
+"      allow update: if (equipe() && doc != '_equipe') || (daDist(doc) && so(['ultimoAcesso', 'avisosLidos', 'avisosLidosEm']));",
+"      allow delete: if equipe() && doc != '_equipe';",
+"    }",
+"    // Dados de cada distribuidora: só ela (e o painel do gestor)",
+"    match /distribuidoras/{dist}/dados/{doc} {",
+"      allow read, write: if equipe() || daDist(dist.split('dist_')[1]);",
+"    }",
+"    // Catálogo público do link de pedido",
+"    match /distribuidoras/{dist}/publico/{doc} {",
+"      allow get: if true;",
+"      allow write: if equipe() || daDist(dist.split('dist_')[1]);",
+"    }",
+"    // Pedidos e cadastros enviados pelos clientes pelo link",
+"    match /distribuidoras/{dist}/web/{id} {",
+"      allow get: if true;",
+"      allow create: if request.resource.data.get('tipo', '') in ['pedido', 'cadastro', 'rastreio'];",
+"      allow list, update, delete: if equipe() || daDist(dist.split('dist_')[1]);",
+"    }",
+"    match /distribuidoras/{dist}/webidx/{doc} {",
+"      allow get, delete: if equipe() || daDist(dist.split('dist_')[1]);",
+"      allow create, update: if request.resource.data.keys().hasOnly(['ids']);",
+"    }",
+"    // Recibos e assinaturas (abertos só por quem tem o link)",
+"    match /recibos/{tok} {",
+"      allow get: if true;",
+"      allow write: if ativo();",
+"    }",
+"    match /aprovacoes/{tok} {",
+"      allow get: if true;",
+"      allow create, delete: if ativo();",
+"      allow update: if ativo() || so(['status', 'nome', 'em', 'assinatura']);",
+"    }",
+"  }",
+"}"].join('\n');}
+async function segurancaAbrir(){
+  if(!_authUser||!_authUser.isMaster||_authUser.equipe)return _semPerm();
+  var c=_el('div',''),ok=!!(_fbAuth&&_fbAuth.email===_GESTOR_EMAIL);
+  function bloco(cor,bg,t){var d=_el('div','background:'+bg+';border:1px solid '+cor+'33;color:'+cor+';border-radius:12px;padding:12px 14px;font-size:13.5px;line-height:1.55;margin-bottom:12px;');d.textContent=t;c.appendChild(d);return d;}
+  function tit(t){c.appendChild(_el('div','font-size:12px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.5px;margin:16px 0 6px;',t));}
+  if(!ok){
+    bloco('#92400E','#FFFBEB','⚠️ O login seguro do Firebase ainda não está ativo para o gestor. Faça o passo 1 abaixo, depois saia e entre de novo no painel do gestor e abra esta tela outra vez.');
+  }else bloco('#166534','#F0FDF4','✅ Você está logado com a conta segura do Firebase. Código do gestor: '+_fbAuth.uid);
+  tit('Passo 1 — Ligar o login por e-mail e senha (só uma vez)');
+  c.appendChild(_el('div','font-size:13.5px;color:#334155;line-height:1.7;white-space:pre-line;','1. Abra console.firebase.google.com e entre no projeto '+fbCred().pid+'.\n2. Menu da esquerda: Criação (Build) → Authentication → botão "Vamos começar".\n3. Na aba "Método de login", clique em "E-mail/senha", ligue a primeira chave e clique em Salvar.'));
+  tit('Passo 2 — Quem já está com o login seguro');
+  var st=_el('div','font-size:13px;color:#64748B;','Verificando...');c.appendChild(st);
+  tit('Passo 3 — Publicar as regras novas');
+  if(!ok)c.appendChild(_el('div','font-size:13px;color:#92400E;','As regras aparecem aqui depois que o passo 1 estiver feito e você entrar de novo.'));
+  else{
+    c.appendChild(_el('div','font-size:13.5px;color:#334155;line-height:1.7;white-space:pre-line;margin-bottom:8px;','Faça depois que as distribuidoras tiverem entrado pelo menos uma vez (veja o passo 2).\n1. No Firebase: Firestore Database → aba "Regras".\n2. Apague tudo o que estiver lá e cole o texto abaixo (botão Copiar).\n3. Clique em "Publicar".'));
+    var pre=_el('pre','background:#0F172A;color:#E2E8F0;border-radius:10px;padding:12px;font-size:11px;line-height:1.45;max-height:220px;overflow:auto;white-space:pre;margin:0;',regrasFirestore(_fbAuth.uid));c.appendChild(pre);
+  }
+  var bts=[{txt:'Fechar',cls:'bs',fn:function(a){a.fechar();}}];
+  if(ok)bts.push({txt:'📋 Copiar regras',cls:'bp',fn:function(){copiar(regrasFirestore(_fbAuth.uid));}});
+  dlg('🔒 Segurança dos dados',c,bts);
+  // passo 2: situação de cada usuário
+  try{
+    var regs=(_mRegs||[]),lin=[],conhecidos={},pend=0,tot=0;
+    for(var i=0;i<regs.length;i++){var r=regs[i];var d=await _distDados(r.id).catch(function(){return {};});
+      (d.usuarios||[]).forEach(function(u){tot++;if(u.fbUid)conhecidos[u.fbUid]=1;else pend++;lin.push({d:_nomeCurto(r),cod:r.id,u:u.nome||u.login,login:u.login,ok:!!u.fbUid});});}
+    var eq=await equipeLer().catch(function(){return [];});eq.forEach(function(u){tot++;if(u.fbUid)conhecidos[u.fbUid]=1;else pend++;lin.push({d:'Equipe do painel',u:u.nome,login:u.login,ok:!!u.fbUid});});
+    st.innerHTML='';
+    st.appendChild(_el('div','font-size:13.5px;color:#0F2044;margin-bottom:6px;font-weight:700;',(tot-pend)+' de '+tot+' acessos já estão no login seguro.'));
+    var bx=_el('div','border:1px solid #E2E8F0;border-radius:10px;max-height:200px;overflow:auto;');
+    lin.forEach(function(x,k){var l=_el('div','display:flex;justify-content:space-between;gap:8px;padding:7px 10px;font-size:12.5px;'+(k?'border-top:1px solid #F1F5F9;':''));l.appendChild(_el('span','color:#334155;min-width:0;',x.d+' · '+x.u+' ('+x.login+')'));l.appendChild(_el('span','white-space:nowrap;font-weight:700;color:'+(x.ok?'#16A34A':'#D97706')+';',x.ok?'✅ seguro':'⏳ falta entrar'));bx.appendChild(l);});
+    st.appendChild(bx);
+    if(pend)st.appendChild(_el('div','font-size:12px;color:#92400E;margin-top:6px;line-height:1.5;','Quem está "falta entrar" passa para o login seguro sozinho na próxima vez que entrar no sistema. Se alguém não puder entrar antes de você publicar as regras, use "Resetar senha" no menu ⋯ da distribuidora (ou edite o usuário da equipe com uma senha nova).'));
+    if(ok){var ac=await fsGet('acessos?pageSize=300').catch(function(){return null;});
+      var estranhos=((ac&&ac.documents)||[]).map(regParse).filter(function(x){return !conhecidos[x.id]&&!(x.papel==='equipe'&&eq.some(function(e){return e.id===x.eqId;}));});
+      if(estranhos.length){var w=_el('div','background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:10px;padding:10px 12px;font-size:12.5px;margin-top:8px;line-height:1.5;','⚠️ '+estranhos.length+' acesso(s) que não pertencem a nenhum usuário conhecido: '+estranhos.map(function(x){return (x.login||'?')+(x.cod?' / '+x.cod:'');}).join(', ')+'. ');
+        var b=_el('button','margin-top:6px;','Remover esses acessos');b.className='btn bd bsm';b.onclick=async function(){for(var z=0;z<estranhos.length;z++){try{await fsDelete('acessos/'+estranhos[z].id);}catch(e){}}w.textContent='✅ Removidos.';};w.appendChild(b);st.appendChild(w);}
+    }
+  }catch(e){st.textContent='Não foi possível verificar ('+e.message+').';}
+}
+(function(){
+  var _rm=renderMaster;renderMaster=function(){var r=_rm.apply(this,arguments);
+    try{var bx=document.querySelector('#pg-master .mbtns');if(bx&&_authUser&&!_authUser.equipe&&!bx.querySelector('.sg-btn')){var b=_el('button','','🔒 Segurança');b.className=bx.querySelector('.gs-hb')?'gs-hb sg-btn':'btn bs sg-btn';bx.appendChild(b);b.onclick=segurancaAbrir;}}catch(e){}
+    return r;};
+})();
+/* teste de conexão (tela de login) sem expor dados */
+async function testarConexao(){
+  var c=_el('div','');function lin(t,cor){c.appendChild(_el('p','margin:0 0 8px;font-size:13.5px;line-height:1.55;color:'+(cor||'#334155')+';',t));}
+  dlg('🔌 Teste de conexão',c,[{txt:'Fechar',cls:'bp',fn:function(a){a.fechar();}}]);
+  var st=_el('p','margin:0;font-size:13px;color:#64748B;','Testando...');c.appendChild(st);
+  var code=0;try{var r=await _fetchReal(fsBase()+'logins/_teste?key='+encodeURIComponent(fbCred().key));code=r.status;}catch(e){code=0;}
+  st.remove();
+  if(code===200||code===404)lin('✅ Servidor de dados: funcionando.','#065F46');else lin('❌ Servidor de dados: '+(code===0?'sem internet ou bloqueado pelo navegador.':'erro '+code+'.'),'#991B1B');
+  try{await _idtk('signInWithPassword',{email:'teste.conexao@'+_AUTH_DOM,password:'x-'+Date.now(),returnSecureToken:true});lin('✅ Login seguro: funcionando.','#065F46');}
+  catch(e){var t=_authErroTipo(e);if(t==='cred'||t==='muitas')lin('✅ Login seguro: funcionando.','#065F46');else if(t==='naoativado')lin('⚠️ Login seguro: ainda não ativado no Firebase (o sistema continua funcionando no modo antigo).','#92400E');else lin('❌ Login seguro: '+(t==='rede'?'sem internet.':e.message),'#991B1B');}
+}
 /* ---- PAINEL DO GESTOR ---- */
 function _soGestor(){return _authUser&&_authUser.isMaster===true;}
 var _mTab='resumo',_mRegs=[],_mCad=[],_mFin=[],_mCal=null,_vFil={dist:'',per:'mes',de:'',ate:'',tipo:'',q:''},_fFil={per:'mes'};
@@ -6971,6 +7231,7 @@ function masterNovaDist(pre){
       var base={pedidos:[],produtos:[],maquinas:[],clientes:[],lancamentos:[],movimentos:[],alertas:[],solicitacoes:[],usuarios:[adm],licenca:{codigos:[]},
         config:{empresa:n,responsavel:reg.responsavel,cpfCnpj:(pre&&pre.cpfCnpj)||'',tel:reg.telefone,cnpj:'',email:reg.email||'',end:pre?[pre.endereco,pre.cidade].filter(Boolean).join(' - '):'',pix:'',termoVenda:'',termoLocacao:''},distribuidoras:{}};
       if(mdl.cat&&mdl.ck.checked){base.produtos=mdl.cat.produtos;base.maquinas=mdl.cat.maquinas;}
+      try{var _ac=await authContaPara(cd,lgn,s,{papel:'admin',nome:adm.nome});adm.fbUid=_ac.uid;adm.fbEmail=_ac.email;}catch(e){var _t=_authErroTipo(e);if(_t!=='naoativado'&&_t!=='rede')throw e;}
       await fsPatch(dataPathDist(cd),fsFields(base));
       await fsPatch('gestao_distribuidoras/'+cd,fsFields(reg));
       if(pre){try{await fsDelete('gestao_distribuidoras/'+pre.id);}catch(e){}}
@@ -6998,6 +7259,7 @@ function masterResetSenha(r){
     dlg('🔑 Resetar senha — '+(r.nome||r.id),c,[{txt:'Cancelar',cls:'bs',fn:function(a){a.fechar();}},{txt:'Gerar senha provisória',cls:'bp',fn:async function(a){
       var u=us[parseInt(sel.value,10)];if(!u)return;var s=gerarSenha();
       u.senhaHash=await hashSenhaNova(s);u.mustChange=true;u.ativo=true;
+      try{var _ac=await authContaPara(r.id,u.login,s,{papel:u.admin?'admin':'usuario',nome:u.nome,antigoUid:u.fbUid});u.fbUid=_ac.uid;u.fbEmail=_ac.email;}catch(e){var _t=_authErroTipo(e);if(_t!=='naoativado'&&_t!=='rede'){toast('Erro ao criar o acesso seguro: '+e.message,'err');return;}}
       try{await fsPatch(dataPathDist(r.id),{usuarios:toFirestore(us)},['usuarios']);a.fechar();masterResultado('🔑 Senha provisória gerada',r.nome||r.id,r.id,u.login,s);}
       catch(e){toast('Erro: '+e.message,'err');}
     }}]);
