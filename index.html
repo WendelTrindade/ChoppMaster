@@ -957,7 +957,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão com o Firebase</a></div>
-    <div class="login-version">ChoppMaster ERP v3.8 · 18/11</div>
+    <div class="login-version">ChoppMaster ERP v3.9 · 18/11</div>
   </div>
 </div>
 
@@ -1074,7 +1074,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     <div class="mf">
       <button class="btn bs" onclick="closeM('mpd')">Cancelar</button>
       <button class="btn bp" onclick="salvarPed(false)">💾 Salvar</button>
-      <button class="btn bp" style="background:#166534;" onclick="salvarPed(true)">💾 Salvar + Imprimir</button>
+      <button class="btn bp" style="background:#166534;" onclick="salvarPed(true)">💾 Salvar + PDF</button>
     </div>
   </div>
 </div>
@@ -1544,7 +1544,7 @@ function renderPeds(){
     +'<button class="btn bsm bgh" onclick="verPed(\''+p.id+'\')" title="Ver">👁</button>'
     +'<button class="btn bsm bgh" onclick="abrirPed(\''+p.id+'\')" title="Editar">✏️</button>'
     +(sl>0&&st!=='cancelado'?'<button class="btn bsm bk" onclick="abrirRec(\''+p.id+'\')" title="Receber">💰</button>':'')
-    +'<button class="btn bsm bgh" onclick="escolherImpressao(\''+p.id+'\')" title="Imprimir">🖨</button>'+(st!=='cancelado'?'<button class="btn bsm bk" onclick="enviarPedWhats(\''+p.id+'\')" title="Enviar no WhatsApp / assinatura">📲</button>':'')+(sl>0&&st!=='cancelado'?'<button class="btn bsm bs" onclick="cobrarPed(\''+p.id+'\')" title="Cobrar no WhatsApp">💬</button>':'')
+    +'<button class="btn bsm bgh" onclick="escolherImpressao(\''+p.id+'\')" title="Gerar PDF">📄</button>'+(st!=='cancelado'?'<button class="btn bsm bk" onclick="enviarPedWhats(\''+p.id+'\')" title="Enviar no WhatsApp / assinatura">📲</button>':'')+(sl>0&&st!=='cancelado'?'<button class="btn bsm bs" onclick="cobrarPed(\''+p.id+'\')" title="Cobrar no WhatsApp">💬</button>':'')
     +(hM&&st!=='devolvido'&&st!=='cancelado'?'<button class="btn bsm bs" onclick="mkDev(\''+p.id+'\')" title="Devolvido">🔄</button>':'')
     +(st!=='cancelado'&&st!=='pago'?'<button class="btn bsm bd" onclick="cancelPed(\''+p.id+'\')" title="Cancelar">✕</button>':'')
     +'</div></td></tr>';
@@ -4712,7 +4712,8 @@ function _mandaImprimir(html){
   var pa=document.getElementById('pra');pa.style.display='block';pa.innerHTML=html;
   setTimeout(function(){window.print();setTimeout(function(){pa.style.display='none';pa.innerHTML='';},3000);},150);
 }
-function imprimirPed(id,modelo){
+function imprimirPed(id,modelo){pedidoPdf(id,modelo);}
+function imprimirPedPapel(id,modelo){
   var p=DB.pedidos.find(function(x){return x.id===id;});if(!p)return;
   modelo=modelo||p.modelo||modeloPadrao();
   _mandaImprimir(modelo==='simples'?htmlPedSimples(p):htmlPedTermos(p));
@@ -4722,7 +4723,7 @@ function escolherImpressao(id){
   var c=_el('div','');c.appendChild(_el('p','margin:0 0 6px;font-size:13px;color:#475569;line-height:1.5;','Escolha o modelo do pedido nº '+(p.num||'')+':'));
   c.appendChild(_el('p','margin:0;font-size:12px;color:#64748B;line-height:1.5;','• Simples: só os dados, os itens e o total, em formato de cupom.\n'));
   c.appendChild(_el('p','margin:0;font-size:12px;color:#64748B;line-height:1.5;','• Com termos: inclui o termo de responsabilidade da venda e as cláusulas de locação das máquinas.'));
-  dlg('🖨 Imprimir pedido',c,[{txt:'Cancelar',cls:'bs',fn:function(a){a.fechar();}},{txt:'📄 Simples',cls:'bs',fn:function(a){a.fechar();imprimirPed(id,'simples');}},{txt:'📑 Com termos',cls:'bp',fn:function(a){a.fechar();imprimirPed(id,'termos');}}]);
+  dlg('📄 Gerar PDF do pedido',c,[{txt:'Cancelar',cls:'bs',fn:function(a){a.fechar();}},{txt:'📄 Simples',cls:'bs',fn:function(a){a.fechar();imprimirPed(id,'simples');}},{txt:'📑 Com termos',cls:'bp',fn:function(a){a.fechar();imprimirPed(id,'termos');}}]);
 }
 /* --- modelo SIMPLES (cupom, fonte de máquina de escrever) --- */
 function htmlPedSimples(p){
@@ -4873,8 +4874,8 @@ function verPed(id){
   +(st!=='cancelado'?'<button class="btn bk" onclick="enviarPedWhats(\''+p.id+'\')">📲 Enviar no WhatsApp</button>':'')
   +(hM&&st!=='devolvido'&&st!=='cancelado'?'<button class="btn bs" onclick="closeM(\'mdt-mo\');mkDev(\''+p.id+'\')">✅ Devolvido</button>':'')
   +(st!=='cancelado'&&st!=='pago'?'<button class="btn bd" onclick="closeM(\'mdt-mo\');cancelPed(\''+p.id+'\')">🚫 Cancelar</button>':'')
-  +'<button class="btn bs" onclick="imprimirPed(\''+p.id+'\',\'simples\')">📄 Imprimir simples</button>'
-  +'<button class="btn bp" onclick="imprimirPed(\''+p.id+'\',\'termos\')">📑 Imprimir com termos</button>';
+  +'<button class="btn bs" onclick="imprimirPed(\''+p.id+'\',\'simples\')">📄 PDF simples</button>'
+  +'<button class="btn bp" onclick="imprimirPed(\''+p.id+'\',\'termos\')">📑 PDF com termos</button>';
   openM('mdt-mo');
 }
 /* --- ficha do cliente --- */
@@ -5475,6 +5476,48 @@ function horaSelSync(id){var i=document.getElementById(id);if(i&&i._hsSync)i._hs
   var _ct=calcTot;calcTot=function(){var r=_ct.apply(this,arguments);try{parcAtualizar();}catch(e){}return r;};
   var _ap=abrirPed;abrirPed=function(id){var r=_ap.apply(this,arguments);try{var s=document.getElementById('ped-parc');var p=id?DB.pedidos.find(function(x){return x.id===id;}):null;if(s){s.value='';s.setAttribute('data-n',String((p&&p.parcelas)||1));}horaSelSync('ped-hora');parcAtualizar();if(s)s.removeAttribute('data-n');}catch(e){}return r;};
 })();
+/* ===== PEDIDO EM PDF (abre/compartilha direto, sem passar pela impressora) ===== */
+var _h2pP=null;
+function carregarHtml2pdf(){
+  if(window.html2pdf)return Promise.resolve();if(_h2pP)return _h2pP;
+  var urls=['https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js','https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js'];
+  _h2pP=new Promise(function(res,rej){var i=0;(function tenta(){if(i>=urls.length){_h2pP=null;rej(new Error('Sem internet para gerar o PDF'));return;}var s=document.createElement('script');s.src=urls[i++];s.onload=function(){window.html2pdf?res():tenta();};s.onerror=tenta;document.head.appendChild(s);})();});
+  return _h2pP;
+}
+function _nomeArq(t){return String(t||'pedido').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,60)||'pedido';}
+function gerarPdfHtml(html,nomeArq){
+  return carregarHtml2pdf().then(function(){
+    return html2pdf().set({margin:[8,10,8,10],filename:nomeArq,image:{type:'jpeg',quality:0.95},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css']}})
+      .from('<div style="width:190mm;background:#fff;">'+html+'</div>','string').outputPdf('blob');
+  });
+}
+var _pdfUrl=null;
+function pedidoPdf(id,modelo){
+  var p=DB.pedidos.find(function(x){return x.id===id;});if(!p)return;
+  modelo=modelo||p.modelo||modeloPadrao();
+  var cli=DB.clientes.find(function(x){return x.id===p.clienteId;})||{};
+  var nome='Pedido_'+(p.num||'')+'_'+_nomeArq(cli.nome)+'.pdf';
+  var aguarde=dlg('📄 Gerando PDF...',_el('div','font-size:14px;color:#475569;padding:6px 0;','Montando o pedido nº '+(p.num||'')+'. Só um instante...'),[]);
+  gerarPdfHtml(modelo==='simples'?htmlPedSimples(p):htmlPedTermos(p),nome).then(function(blob){
+    aguarde.fechar();
+    try{if(_pdfUrl)URL.revokeObjectURL(_pdfUrl);}catch(e){}
+    _pdfUrl=URL.createObjectURL(blob);var url=_pdfUrl;
+    var arq=null;try{arq=new File([blob],nome,{type:'application/pdf'});}catch(e){}
+    var podeComp=!!(arq&&navigator.canShare&&navigator.canShare({files:[arq]}));
+    var c=_el('div','');
+    c.appendChild(_el('div','font-size:14px;color:#0F2044;font-weight:700;margin-bottom:4px;','Pedido nº '+(p.num||'')+' — '+(cli.nome||'')));
+    c.appendChild(_el('div','font-size:12px;color:#64748B;margin-bottom:6px;',(modelo==='simples'?'Modelo simples':'Modelo com termos')+' · '+nome));
+    if(podeComp)c.appendChild(_el('div','font-size:12px;color:#475569;line-height:1.5;','"Compartilhar" envia o PDF direto pelo WhatsApp, e-mail ou outro aplicativo.'));
+    var bts=[{txt:'Fechar',cls:'bs',fn:function(a){a.fechar();}},
+      {txt:'⬇ Baixar',cls:'bs',fn:function(){var a=document.createElement('a');a.href=url;a.download=nome;document.body.appendChild(a);a.click();setTimeout(function(){a.remove();},500);}},
+      {txt:'📄 Abrir PDF',cls:podeComp?'bs':'bp',fn:function(){var w=window.open(url,'_blank');if(!w){var a=document.createElement('a');a.href=url;a.target='_blank';a.download=nome;document.body.appendChild(a);a.click();setTimeout(function(){a.remove();},500);}}}];
+    if(podeComp)bts.push({txt:'📤 Compartilhar',cls:'bp',fn:function(){navigator.share({files:[arq],title:'Pedido nº '+(p.num||''),text:'Pedido nº '+(p.num||'')+' — '+((DB.config||{}).empresa||'')}).catch(function(){});}});
+    dlg('✅ PDF do pedido pronto',c,bts);
+  }).catch(function(e){
+    aguarde.fechar();toast('Não consegui gerar o PDF ('+(e&&e.message||e)+'). Abrindo a impressão.','err');
+    _mandaImprimir(modelo==='simples'?htmlPedSimples(p):htmlPedTermos(p));
+  });
+}
 /* ---- PAINEL DO GESTOR ---- */
 function _soGestor(){return _authUser&&_authUser.isMaster===true;}
 var _mTab='resumo',_mRegs=[],_mCad=[],_mFin=[],_mCal=null,_vFil={dist:'',per:'mes',de:'',ate:'',tipo:'',q:''},_fFil={per:'mes'};
