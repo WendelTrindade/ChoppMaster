@@ -1182,7 +1182,7 @@ a.ap-dt-nm:hover{text-decoration:underline;color:#2563EB;}
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão</a></div>
-    <div class="login-version">ChoppMaster ERP v5.3 · 19/11</div>
+    <div class="login-version">ChoppMaster ERP v5.4 · 19/11</div>
   </div>
 </div>
 
@@ -4174,12 +4174,13 @@ async function loginDistribuidora(cod,loginVal,senhaVal,jaAut){
       }
       if(!d) return {erro:'Código de distribuidora não encontrado. Se ela foi cadastrada no modo de teste, entre neste mesmo aparelho em que cadastrou.',falha:true};
     }
-    reg=regParse(d);}catch(e){offline=true;_erroFb=e.message||String(e);}
+    reg=regParse(d);}catch(e){_erroFb=e.message||String(e);offline=!/HTTP 40[13]/.test(_erroFb);}
   if(reg){var st=statusDist(reg);if(st.bloqueada) return {erro:st.msg};}
   if(!offline){
-    try{var dd=await fsGet(dataPathDist(cod));if(dd&&dd.fields){dados={};Object.keys(dd.fields).forEach(function(k){dados[k]=fromFirestore(dd.fields[k]);});}}catch(e){offline=true;}
+    try{var dd=await fsGet(dataPathDist(cod));if(dd&&dd.fields){dados={};Object.keys(dd.fields).forEach(function(k){dados[k]=fromFirestore(dd.fields[k]);});}}catch(e){if(/HTTP 40[13]/.test(e.message||'')){_erroFb=e.message;}else offline=true;}
   }
-  if(!dados){var loc=localStorage.getItem('cm_dist_'+cod);if(loc){try{dados=JSON.parse(loc);}catch(e){}}}
+  if(!dados&&offline){var loc=localStorage.getItem('cm_dist_'+cod);if(loc){try{dados=JSON.parse(loc);}catch(e){}}}
+  if(!dados&&/HTTP 40[13]/.test(_erroFb||'')) return {erro:'Código, login ou senha incorretos (HTTP 403).',falha:true};
   if(!dados) return {erro:offline?('Não consegui falar com o servidor'+(_erroFb?' ('+_erroFb+')':'')+'. Toque em "Testar conexão" abaixo.'):'Distribuidora sem dados. Fale com o gestor.'};
   if(reg){var st2=statusDist(reg,vendasPorMes(dados.pedidos));if(st2.bloqueada) return {erro:st2.msg};}
   var us=(dados.usuarios||[]).filter(function(u){return String(u.login||'').toLowerCase()===loginVal&&u.ativo!==false;})[0];
@@ -6281,9 +6282,9 @@ function equipeForm(u,L,depois){
     if(L.some(function(x){return x.id!==u.id&&String(x.login).toLowerCase()===l;}))return mostraMsg(m,'Já existe um usuário com esse login.');
     if((novo||s)&&s.length<6)return mostraMsg(m,'A senha precisa ter pelo menos 6 caracteres.');
     var perms=Object.keys(cks).filter(function(k){return cks[k].checked;});if(!perms.some(function(p){return p.indexOf('ver_')===0;}))return mostraMsg(m,'Marque pelo menos uma aba que ele pode ver.');
-    var x={id:u.id,nome:n,login:l,perms:perms,ativo:ac.checked,senhaHash:u.senhaHash||'',fbUid:u.fbUid||'',criadoEm:u.criadoEm||new Date().toISOString()};
+    var x={id:u.id,nome:n,login:l,perms:perms,ativo:ac.checked,senhaHash:u.senhaHash||'',fbUid:u.fbUid||'',fbEmail:u.fbEmail||'',criadoEm:u.criadoEm||new Date().toISOString()};
     try{if(s)x.senhaHash=await hashSenhaNova(s);
-      if(s){try{var _ac=await authContaPara('',l,s,{papel:'equipe',nome:n,perms:perms,ativo:ac.checked,eqId:x.id,antigoUid:u.fbUid});x.fbUid=_ac.uid;}catch(e){var _t=_authErroTipo(e);if(_t!=='naoativado'&&_t!=='rede')throw e;}}
+      if(s){try{var _ac=await authContaPara('',l,s,{papel:'equipe',nome:n,perms:perms,ativo:ac.checked,eqId:x.id,antigoUid:u.fbUid});x.fbUid=_ac.uid;x.fbEmail=_ac.email;}catch(e){var _t=_authErroTipo(e);if(_t!=='naoativado'&&_t!=='rede')throw e;}}
       else if(x.fbUid){try{await fsPatch('acessos/'+x.fbUid,fsFields({perms:perms,ativo:ac.checked,nome:n}),['perms','ativo','nome']);}catch(e){}}
       var nl=L.filter(function(y){return y.id!==u.id;}).concat([x]).sort(function(p,q){return String(p.nome).localeCompare(String(q.nome));});
       await equipeGravar(nl);L.length=0;nl.forEach(function(y){L.push(y);});a.fechar();depois();
@@ -6586,7 +6587,7 @@ async function _acessoGravar(uid,cod,login,email,acc){
 /* cria a conta de OUTRA pessoa (gestor criando distribuidora, admin criando usuário, senha provisória) */
 async function authContaPara(cod,login,senha,acc){
   var email=emailNovo(cod,login),n=await authCriarEmail(email,senha);
-  await _acessoGravar(n.uid,cod,login,email,acc);
+  try{await _acessoGravar(n.uid,cod,login,email,acc);}catch(e){/* regras antigas: o painel de Segurança grava depois */}
   if(acc.antigoUid&&acc.antigoUid!==n.uid){try{await fsDelete('acessos/'+acc.antigoUid);}catch(e){}}
   return {uid:n.uid,email:email};
 }
@@ -6621,10 +6622,11 @@ setInterval(_authConfereUid,8000);
       var r2=await _ld(cod,login,senha,false);
       if(!r2.ok){if(/403|401|servidor/i.test(r2.erro||''))return {erro:'Código, login ou senha incorretos. Se você ainda não entrou depois da atualização de segurança, peça uma nova senha ao gestor.',falha:true};return r2;}
       // senha antiga confere: cria a conta segura agora (migração automática)
-      try{var n=await authCriarEmail(email,senha);_fbAuth=n;_authSalva();
-        await _acessoGravar(n.uid,cod,r2.user.login,email,{papel:r2.user.admin?'admin':'usuario',nome:r2.user.nome});
-        r2.user.fbUid=n.uid;r2.user.fbEmail=email;_authGuardaUid(cod,r2.dados);
-      }catch(e){var t2=_authErroTipo(e);if(t2==='existe'){_authSair();return {erro:'Código, login ou senha incorretos.',falha:true};}}
+      var n=null,em2=email;
+      if(r2.user.fbEmail&&r2.user.fbEmail!==email){try{n=await authEntrarEmail(r2.user.fbEmail,senha);em2=r2.user.fbEmail;}catch(e){}}
+      if(!n){try{n=await authCriarEmail(email,senha);}catch(e){var t2=_authErroTipo(e);if(t2==='existe'){_authSair();return {erro:'Código, login ou senha incorretos.',falha:true};}}}
+      if(n){_fbAuth=n;_authSalva();r2.user.fbUid=n.uid;r2.user.fbEmail=em2;_authGuardaUid(cod,r2.dados);
+        try{await _acessoGravar(n.uid,cod,r2.user.login,em2,{papel:r2.user.admin?'admin':'usuario',nome:r2.user.nome});}catch(e){}}
       return r2;
     }
     return _ld(cod,login,senha,false);   // Firebase Auth ainda não ativado ou sem internet: modo antigo
@@ -6640,8 +6642,8 @@ setInterval(_authConfereUid,8000);
     if(tipo==='desativado')return null;
     var u=await _eqA(login,senha);
     if(u&&tipo==='cred'){try{var n=await authCriarEmail(email,senha);_fbAuth=n;_authSalva();
-      await _acessoGravar(n.uid,'',u.login,email,{papel:'equipe',nome:u.nome,perms:u.perms||[],eqId:u.id,ativo:true});
-      var l=await equipeLer();l.forEach(function(x){if(x.id===u.id)x.fbUid=n.uid;});await equipeGravar(l);}catch(e){}}
+      try{var l=await equipeLer();l.forEach(function(x){if(x.id===u.id){x.fbUid=n.uid;x.fbEmail=email;}});await equipeGravar(l);}catch(e){}
+      try{await _acessoGravar(n.uid,'',u.login,email,{papel:'equipe',nome:u.nome,perms:u.perms||[],eqId:u.id,ativo:true});}catch(e){}}catch(e){}}
     return u;
   };
   var _lo=fazerLogout;fazerLogout=function(){_authSair();return _lo.apply(this,arguments);};
@@ -6754,7 +6756,7 @@ async function segurancaAbrir(){
   tit('Passo 3 — Publicar as regras novas');
   if(!ok)c.appendChild(_el('div','font-size:13px;color:#92400E;','As regras aparecem aqui depois que o passo 1 estiver feito e você entrar de novo.'));
   else{
-    c.appendChild(_el('div','font-size:13.5px;color:#334155;line-height:1.7;white-space:pre-line;margin-bottom:8px;','Faça depois que as distribuidoras tiverem entrado pelo menos uma vez (veja o passo 2).\n1. No Firebase: Firestore Database → aba "Regras".\n2. Apague tudo o que estiver lá e cole o texto abaixo (botão Copiar).\n3. Clique em "Publicar".'));
+    c.appendChild(_el('div','font-size:13.5px;color:#334155;line-height:1.7;white-space:pre-line;margin-bottom:8px;','Faça depois que todos estiverem "✅ seguro" no passo 2.\n1. No Firebase: Firestore Database → aba "Regras". Copie o texto que está lá e guarde (para voltar atrás se precisar).\n2. Apague tudo e cole o texto abaixo (botão Copiar).\n3. Clique em "Publicar", espere 1 minuto e ABRA ESTA TELA DE NOVO: ela termina de liberar o acesso de cada usuário.'));
     var pre=_el('pre','background:#0F172A;color:#E2E8F0;border-radius:10px;padding:12px;font-size:11px;line-height:1.45;max-height:220px;overflow:auto;white-space:pre;margin:0;',regrasFirestore(_fbAuth.uid));c.appendChild(pre);
   }
   var bts=[{txt:'Fechar',cls:'bs',fn:function(a){a.fechar();}}];
@@ -6762,13 +6764,19 @@ async function segurancaAbrir(){
   dlg('🔒 Segurança dos dados',c,bts);
   // passo 2: situação de cada usuário
   try{
-    var acsL=[];if(ok){var ac0=await fsGet('acessos?pageSize=300').catch(function(){return null;});acsL=((ac0&&ac0.documents)||[]).map(regParse);}
+    var acsL=[],regrasNovas=false;if(ok){var ac0=await fsGet('acessos?pageSize=300').then(function(x){regrasNovas=true;return x;}).catch(function(){return null;});acsL=((ac0&&ac0.documents)||[]).map(regParse);}
+    var sincOk=0,sincErr=0;
     function acDe(cod,login){return acsL.filter(function(x){return (x.cod||'')===(cod||'')&&String(x.login||'').toLowerCase()===String(login||'').toLowerCase()&&x.ativo!==false;})[0];}
     var regs=(_mRegs||[]),lin=[],conhecidos={},pend=0,tot=0;
     for(var i=0;i<regs.length;i++){var r=regs[i];var d=await _distDados(r.id).catch(function(){return {};});
+      if(ok){for(var z=0;z<(d.usuarios||[]).length;z++){var uu=d.usuarios[z];if(!uu.fbUid)continue;try{await _acessoGravar(uu.fbUid,r.id,uu.login,uu.fbEmail||emailPadrao(r.id,uu.login),{papel:uu.admin?'admin':'usuario',nome:uu.nome||uu.login,ativo:uu.ativo!==false});sincOk++;}catch(e){sincErr++;}}}
       (d.usuarios||[]).forEach(function(u){tot++;var a=acDe(r.id,u.login);if(u.fbUid)conhecidos[u.fbUid]=1;if(a)conhecidos[a.id]=1;var seg=!!(u.fbUid||a);if(!seg)pend++;lin.push({d:_nomeCurto(r),cod:r.id,u:u.nome||u.login,login:u.login,ok:seg});});}
-    var eq=await equipeLer().catch(function(){return [];});eq.forEach(function(u){tot++;var a=acDe('',u.login);if(u.fbUid)conhecidos[u.fbUid]=1;if(a)conhecidos[a.id]=1;var seg=!!(u.fbUid||a);if(!seg)pend++;lin.push({d:'Equipe do painel',u:u.nome,login:u.login,ok:seg});});
+    var eq=await equipeLer().catch(function(){return [];});
+    if(ok){for(var y=0;y<eq.length;y++){var ue=eq[y];if(!ue.fbUid)continue;try{await _acessoGravar(ue.fbUid,'',ue.login,ue.fbEmail||emailPadrao('',ue.login),{papel:'equipe',nome:ue.nome,perms:ue.perms||[],eqId:ue.id,ativo:ue.ativo!==false});sincOk++;}catch(e){sincErr++;}}}
+    eq.forEach(function(u){tot++;var a=acDe('',u.login);if(u.fbUid)conhecidos[u.fbUid]=1;if(a)conhecidos[a.id]=1;var seg=!!(u.fbUid||a);if(!seg)pend++;lin.push({d:'Equipe do painel',u:u.nome,login:u.login,ok:seg});});
     st.innerHTML='';
+    regrasNovas=sincOk>0||(sincErr===0&&regrasNovas);
+    if(ok)st.appendChild(_el('div','font-size:13px;font-weight:700;margin-bottom:8px;color:'+(regrasNovas?'#166534':'#92400E')+';',regrasNovas?('✅ Regras novas publicadas. Acessos liberados agora: '+sincOk+(sincErr?' (falharam '+sincErr+')':'')+'.'):'⏳ Regras novas ainda não publicadas (é o passo 3).'));
     st.appendChild(_el('div','font-size:13.5px;color:#0F2044;margin-bottom:6px;font-weight:700;',(tot-pend)+' de '+tot+' acessos já estão no login seguro.'));
     var bx=_el('div','border:1px solid #E2E8F0;border-radius:10px;max-height:200px;overflow:auto;');
     lin.forEach(function(x,k){var l=_el('div','display:flex;justify-content:space-between;gap:8px;padding:7px 10px;font-size:12.5px;'+(k?'border-top:1px solid #F1F5F9;':''));l.appendChild(_el('span','color:#334155;min-width:0;',x.d+' · '+x.u+' ('+x.login+')'));l.appendChild(_el('span','white-space:nowrap;font-weight:700;color:'+(x.ok?'#16A34A':'#D97706')+';',x.ok?'✅ seguro':'⏳ falta entrar'));bx.appendChild(l);});
