@@ -1150,7 +1150,7 @@ a.ap-dt-nm:hover{text-decoration:underline;color:#2563EB;}
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão com o Firebase</a></div>
-    <div class="login-version">ChoppMaster ERP v4.2 · 18/11</div>
+    <div class="login-version">ChoppMaster ERP v4.3 · 18/11</div>
   </div>
 </div>
 
@@ -4408,12 +4408,6 @@ function abrirCobranca(r){
   }}]);
   return api;
 }
-function cobMarcarPago(r,l,desfazer,api){
-  var pg=(r.pagos||[]).filter(function(g){return g.ref!==l.ref;});
-  if(!desfazer)pg.push({ref:l.ref,valor:l.valor,data:_ymd(new Date()),desc:l.desc});
-  var f=fsFields({pagos:pg});
-  fsPatch('gestao_distribuidoras/'+r.id,f,['pagos']).then(function(){r.pagos=pg;toast(desfazer?'Pagamento desfeito.':'Pagamento registrado.','ok');if(api)api.fechar();abrirCobranca(r);if(!desfazer)abrirRecibo(r,l);}).catch(function(e){toast('Erro: '+e.message,'err');});
-}
 
 /* ---- RECIBOS (o gestor gera e envia por WhatsApp ou e-mail) ---- */
 function extensoBRL(v){
@@ -4679,7 +4673,7 @@ async function masterDemoRemover(){
 }
 /* ---- MODO DE TESTE LOCAL: dados fictícios guardados só neste aparelho (nada vai ao Firebase) ---- */
 var _DEMO_KEY='cm_demo_fs';
-function demoOn(){try{return !!(_authUser&&_authUser.isMaster===true&&localStorage.getItem('cm_demo_on')==='1');}catch(e){return false;}}
+function demoOn(){try{return !!(_authUser&&_authUser.isMaster===true&&localStorage.getItem('cm_demo_on')==='1'&&/[?&]teste=1/.test(location.search));}catch(e){return false;}}
 function demoStore(){try{return JSON.parse(localStorage.getItem(_DEMO_KEY)||'{}');}catch(e){return {};}}
 function demoSave(st){try{localStorage.setItem(_DEMO_KEY,JSON.stringify(st));return true;}catch(e){try{toast('Sem espaço para os dados de teste neste aparelho.','err');}catch(x){}return false;}}
 function demoCaminho(url){
@@ -4805,17 +4799,10 @@ async function testarConexao(){
   try{var w=await _fetchReal(base+'gestao_distribuidoras/_teste_conexao'+k,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields:{quando:{stringValue:new Date().toISOString()}}})});code=w.status;txt=await w.text();}catch(e){code=0;txt=String(e);}
   if(code===200)lin('✅ GRAVAR: funcionando.','#065F46');else{lin('❌ GRAVAR: falhou. '+explica(code,txt),'#991B1B');lin('Detalhe técnico: '+code+' '+txt.replace(/\s+/g,' ').slice(0,220),'#94A3B8');}
   var loc=[];try{loc=demoLocaisReais();}catch(e){}
-  if(loc.length)lin('📱 Guardadas só neste aparelho (cadastradas no modo de teste): '+loc.map(function(x){return x.nome+' ('+x.id+')';}).join(', ')+'. Elas são enviadas ao Firebase quando você faz o login delas aqui, ou pelo gestor em "Dados de teste" → "Usar dados reais".','#92400E');
+  if(loc.length)lin('📱 Guardadas só neste aparelho (cadastradas no modo de teste): '+loc.map(function(x){return x.nome+' ('+x.id+')';}).join(', ')+'. Elas são enviadas ao Firebase quando você faz o login delas aqui, ou abrindo o sistema pelo endereço normal (sem “?teste=1”).','#92400E');
 }
 /* ---- CADASTRO DE NOVA DISTRIBUIDORA POR LINK (página pública + validação do gestor) ---- */
 function linkCadastro(){return linkSistema()+'?cadastro=1';}
-function masterLinkCadastro(){
-  var lk=linkCadastro(),txt='🍺 ChoppMaster — cadastro da sua distribuidora\n\nPreencha seus dados neste link:\n'+lk+'\n\nDepois de conferir, envio seu código, login e senha de acesso.';
-  var c=_el('div','');
-  c.appendChild(_el('p','margin:0 0 8px;font-size:13px;color:#475569;line-height:1.5;','Envie este link para a nova distribuidora. Ela preenche os dados, o cadastro aparece na aba Distribuidoras para você validar, e só então o acesso é criado.'));
-  c.appendChild(_el('pre','background:#F1F5F9;border-radius:8px;padding:12px;font-size:13px;white-space:pre-wrap;word-break:break-all;margin:0;font-family:inherit;',lk));
-  dlg('🔗 Link de cadastro',c,[{txt:'📋 Copiar link',cls:'bs',fn:function(){copiar(lk);}},{txt:'📱 Enviar no WhatsApp',cls:'bk',fn:function(){window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}},{txt:'Fechar',cls:'bp',fn:function(a){a.fechar();}}]);
-}
 function cadPendentesEl(co){
   var ps=_mCad||[];if(!ps.length)return;
   var bx=_el('div','background:#EFF6FF;border:1px solid #93C5FD;border-radius:10px;padding:12px;margin-bottom:14px;');
@@ -6023,6 +6010,46 @@ function distMenu(r){
   var _rm=renderMaster;renderMaster=function(){var r=_rm.apply(this,arguments);try{var pg=document.getElementById('pg-master'),t=pg&&pg.querySelector('.mtop');if(t){t.classList.add('gs-hero');var tt=t.firstChild;if(tt&&tt.children[1]){tt.children[0].textContent='Painel do Gestor';tt.children[1].textContent='Olá'+((_authUser&&_authUser.nome&&_authUser.nome!=='Gestor')?', '+_authUser.nome.split(' ')[0]:'')+' 👋';}
     Array.prototype.forEach.call(t.querySelectorAll('.mbtns .btn'),function(b){b.className='gs-hb'+(/Nova distribuidora/.test(b.textContent)?' pri':'');});}}catch(e){}return r;};
 })();
+/* ===== RECIBO AUTOMÁTICO: ao marcar como pago, gera o recibo e abre o WhatsApp da distribuidora ===== */
+async function reciboGerar(r,l,forma){
+  var g=(r.pagos||[]).filter(function(x){return x.ref===l.ref;})[0];if(!g)throw new Error('Pagamento não encontrado');
+  var iso=new Date().toISOString(),em=await emissorGet();
+  var num=g.rec||('R'+String(g.data||'').replace(/-/g,'')+'-'+Math.floor(1000+Math.random()*9000)),tok=g.tok||reciboToken();
+  forma=forma||g.forma||'PIX';
+  var snap={num:num,emissor:{nome:em.nome||'ChoppMaster',doc:em.doc||'',tel:em.tel||'',email:em.email||'',cidade:em.cidade||''},pagador:r.nome||r.id,cod:r.id,valor:g.valor,desc:l.desc||g.desc,ref:l.ref,data:g.data,forma:forma,emitidoEm:iso};
+  var linkOk=true;try{await fsPatch('recibos/'+tok,fsFields({snap:JSON.stringify(snap),criadoEm:iso,cod:r.id}),['snap','criadoEm','cod']);}catch(e){linkOk=false;}
+  var pg=(r.pagos||[]).map(function(x){if(x.ref!==l.ref)return x;var y={};Object.keys(x).forEach(function(k){y[k]=x[k];});y.rec=num;y.tok=linkOk?tok:(x.tok||'');y.forma=forma;return y;});
+  try{await fsPatch('gestao_distribuidoras/'+r.id,fsFields({pagos:pg}),['pagos']);r.pagos=pg;}catch(e){}
+  return {snap:snap,link:linkOk?linkSistema()+'?recibo='+tok:''};
+}
+function reciboTexto(x){var s=x.snap;return '🧾 *Recibo de pagamento nº '+s.num+'*\n\nRecebi de *'+s.pagador+'* a importância de *'+R$(s.valor)+'* ('+extensoBRL(s.valor)+'), referente a '+s.desc+'.\nPago em '+_dbr(s.data)+' via '+s.forma+'.\n'+(x.link?'\nAbrir / imprimir o recibo:\n'+x.link+'\n':'')+'\n— '+s.emissor.nome;}
+function cobMarcarPago(r,l,desfazer,api){
+  var fone=_foneWa(r.telefone||''),wj=null;
+  if(!desfazer&&fone.length>=12){try{wj=window.open('about:blank','_blank');}catch(e){}}
+  var pg=(r.pagos||[]).filter(function(g){return g.ref!==l.ref;});
+  if(!desfazer)pg.push({ref:l.ref,valor:l.valor,data:_ymd(new Date()),desc:l.desc,forma:'PIX'});
+  fsPatch('gestao_distribuidoras/'+r.id,fsFields({pagos:pg}),['pagos']).then(function(){
+    r.pagos=pg;if(api)api.fechar();
+    if(desfazer){toast('Pagamento desfeito.','ok');abrirCobranca(r);return;}
+    toast('Pagamento registrado. Gerando o recibo...','ok');
+    reciboGerar(r,l).then(function(x){
+      abrirCobranca(r);
+      var url='https://wa.me/'+fone+'?text='+encodeURIComponent(reciboTexto(x));
+      if(fone.length>=12&&wj){try{wj.location.href=url;}catch(e){window.open(url,'_blank');}toast('✅ Recibo nº '+x.snap.num+' gerado e aberto no WhatsApp da distribuidora.','ok');}
+      else if(fone.length>=12){var d=_el('div','font-size:14px;color:#334155;line-height:1.5;','Recibo nº '+x.snap.num+' de '+R$(x.snap.valor)+' gerado. Toque para enviar no WhatsApp da distribuidora.');dlg('🧾 Recibo pronto',d,[{txt:'Fechar',cls:'bs',fn:function(a){a.fechar();}},{txt:'📲 Enviar no WhatsApp',cls:'bk',fn:function(a){a.fechar();window.open(url,'_blank');}}]);}
+      else{toast('Recibo gerado. Cadastre o WhatsApp da distribuidora para enviar.','ok');abrirRecibo(r,l);}
+    }).catch(function(e){if(wj)try{wj.close();}catch(x){}toast('Pagamento registrado, mas o recibo não foi gerado ('+e.message+').','err');abrirCobranca(r);});
+  }).catch(function(e){if(wj)try{wj.close();}catch(x){}toast('Erro: '+e.message,'err');});
+}
+function masterLinkCadastro(){
+  var lk=linkCadastro(),txt='🍺 *ChoppMaster* — cadastro da sua distribuidora\n\nOlá! Preencha os dados da sua empresa neste link:\n'+lk+'\n\nDepois que eu conferir, envio por aqui o seu código, login e senha de acesso ao sistema.';
+  var c=_el('div','');
+  c.appendChild(_el('p','margin:0 0 10px;font-size:13px;color:#475569;line-height:1.5;','A nova distribuidora preenche os dados, o cadastro aparece na aba Distribuidoras para você validar, e só então o acesso é criado.'));
+  var tl=campoEl('WhatsApp da distribuidora','tel','','(62) 99999-0000');c.appendChild(tl.wrap);
+  c.appendChild(_el('pre','background:#F1F5F9;border-radius:8px;padding:10px;font-size:12px;white-space:pre-wrap;word-break:break-all;margin:0;font-family:inherit;',lk));
+  var m=msgEl();c.appendChild(m);
+  dlg('📨 Enviar link de cadastro',c,[{txt:'Fechar',cls:'bs',fn:function(a){a.fechar();}},{txt:'📋 Copiar link',cls:'bs',fn:function(){copiar(lk);}},{txt:'📲 Enviar no WhatsApp',cls:'bk',fn:function(a){var f=_foneWa(tl.input.value);if(tl.input.value.trim()&&f.length<12)return mostraMsg(m,'Confira o número com DDD.');window.open('https://wa.me/'+(f.length>=12?f:'')+'?text='+encodeURIComponent(txt),'_blank');a.fechar();}}]);
+}
 /* ---- PAINEL DO GESTOR ---- */
 function _soGestor(){return _authUser&&_authUser.isMaster===true;}
 var _mTab='resumo',_mRegs=[],_mCad=[],_mFin=[],_mCal=null,_vFil={dist:'',per:'mes',de:'',ate:'',tipo:'',q:''},_fFil={per:'mes'};
@@ -6054,13 +6081,12 @@ function renderMaster(){
   var top=_el('div','');top.className='mtop';
   var tt=_el('div','');tt.appendChild(_el('div','font-size:11px;color:var(--silver3);text-transform:uppercase;letter-spacing:.5px;','Painel do Gestor'));
   tt.appendChild(_el('div','font-size:18px;font-weight:700;color:var(--dk);','Minhas distribuidoras'));top.appendChild(tt);
-  var bx=_el('div','');bx.className='mbtns';var bd=_el('button','','🧪 Dados de teste');bd.className='btn bs';bd.onclick=masterDemo;bx.appendChild(bd);
+  var bx=_el('div','');bx.className='mbtns';
   var be=_el('button','','🧾 Dados do recibo');be.className='btn bs';be.onclick=abrirEmissor;bx.appendChild(be);
-  var bl=_el('button','','🧹 Limpar dados de teste');bl.className='btn bs';bl.onclick=masterLimparTeste;bx.appendChild(bl);
-  var bk=_el('button','','🔗 Link de cadastro');bk.className='btn bs';bk.onclick=masterLinkCadastro;bx.appendChild(bk);
+  var bk=_el('button','','📨 Enviar link de cadastro');bk.className='btn bs';bk.onclick=masterLinkCadastro;bx.appendChild(bk);
   var bn=_el('button','','+ Nova distribuidora');bn.className='btn bp';bn.onclick=function(){masterNovaDist();};bx.appendChild(bn);top.appendChild(bx);
   pg.appendChild(top);
-  if(demoOn()){pg.appendChild(_el('div','background:#FEF3C7;border:1px solid #FCD34D;color:#92400E;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px;line-height:1.5;','🧪 MODO DE TESTE — os dados abaixo são fictícios e ficam só neste aparelho. Suas distribuidoras reais NÃO aparecem aqui. Toque em "Dados de teste" → "Usar dados reais" para vê-las.'));}
+  if(demoOn()){pg.appendChild(_el('div','background:#FEF3C7;border:1px solid #FCD34D;color:#92400E;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px;line-height:1.5;','🧪 MODO DE TESTE — os dados abaixo são fictícios e ficam só neste aparelho. Suas distribuidoras reais NÃO aparecem aqui. Para ver os dados reais, abra o sistema pelo endereço normal (sem “?teste=1”).'));}
   var tabs=_el('div','');tabs.className='mtabs';tabs.id='m-tabs';pg.appendChild(tabs);
   var corpo=_el('div','');corpo.id='m-corpo';corpo.appendChild(_el('div','text-align:center;padding:24px;color:var(--silver3);','Carregando...'));pg.appendChild(corpo);
   demoPreparar().then(masterCarregar).then(function(){masterMostra();}).catch(function(e){corpo.innerHTML='';corpo.appendChild(_el('div','text-align:center;padding:24px;color:#991B1B;','Não foi possível carregar ('+e.message+'). Verifique a internet e as regras do Firebase.'));});
