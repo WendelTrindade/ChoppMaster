@@ -1224,7 +1224,7 @@ a.ap-dt-nm:hover{text-decoration:underline;color:#2563EB;}
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão</a></div>
-    <div class="login-version">ChoppMaster ERP v5.9 · 25/11</div>
+    <div class="login-version">ChoppMaster ERP v5.10 · 25/11</div>
   </div>
 </div>
 
@@ -4111,7 +4111,7 @@ function checkAprovarMode(){
 /* ===== MULTI-DISTRIBUIDORAS: login por código, painel do gestor, recuperação de senha ===== */
 var _FB_PID_PADRAO='choppmaster-wendel-1ddf8';
 var _FB_KEY_PADRAO='AIzaSyA6nJPbOx-TDJqThAyamqeZ1N0T_diisFY';
-var _MASTER_SENHA_HASH='pbkdf2$120000$01f043b6a2cd2738704a904c85baad72$260bb4bef8abf7f4781316e61c39d03a1533c754ee65a395fbf670607147ae23';
+var _MASTER_SENHA_HASH='pbkdf2$120000$6dcf8a79895c258f3bc403e2fd771456$8cc2c6af7d58b271a63126e64fc84cb910d6641a39f83137ecdbfc92a1626330';
 var _GESTOR_TEL='';   /* WhatsApp do gestor com DDD (ex: 62999990000) — usado em "Esqueci minha senha" */
 var _viewAs=null;
 
@@ -6702,7 +6702,7 @@ async function authGestorEntrar(senha){
 function _gestorTrocaSenhaFirebase(nova){
   return new Promise(function(resolve){
     var c=_el('div',''),m=msgEl();
-    c.appendChild(_el('p','margin:0 0 10px;font-size:13.5px;color:#334155;line-height:1.55;','A senha do gestor foi trocada. Para concluir, digite a SENHA ANTIGA do gestor só esta vez. Depois disso, só a senha nova funciona.'));
+    c.appendChild(_el('p','margin:0 0 10px;font-size:13.5px;color:#334155;line-height:1.55;','A senha do gestor foi trocada. Para concluir, digite a ÚLTIMA SENHA que funcionou no painel do gestor (a anterior a esta), só esta vez. Depois disso, só a senha nova funciona.'));
     var f=campoEl('Senha antiga do gestor','password','','');c.appendChild(f.wrap);c.appendChild(m);var fim=false;
     function sai(v){if(fim)return;fim=true;resolve(v);}
     dlg('🔐 Concluir troca de senha',c,[{txt:'Agora não',cls:'bs',fn:function(a){a.fechar();sai(false);}},{txt:'Confirmar',cls:'bp',fn:async function(a){
