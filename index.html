@@ -1224,7 +1224,7 @@ a.ap-dt-nm:hover{text-decoration:underline;color:#2563EB;}
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão</a></div>
-    <div class="login-version">ChoppMaster ERP v5.8 · 25/11</div>
+    <div class="login-version">ChoppMaster ERP v5.9 · 25/11</div>
   </div>
 </div>
 
@@ -4111,7 +4111,7 @@ function checkAprovarMode(){
 /* ===== MULTI-DISTRIBUIDORAS: login por código, painel do gestor, recuperação de senha ===== */
 var _FB_PID_PADRAO='choppmaster-wendel-1ddf8';
 var _FB_KEY_PADRAO='AIzaSyA6nJPbOx-TDJqThAyamqeZ1N0T_diisFY';
-var _MASTER_SENHA_HASH='pbkdf2$120000$1a90df124480bfaec33de46a90c4ff76$e48c39d939c2743f5e0b03a8420e18b98bd734508c67928906c120deee6100ac';
+var _MASTER_SENHA_HASH='pbkdf2$120000$01f043b6a2cd2738704a904c85baad72$260bb4bef8abf7f4781316e61c39d03a1533c754ee65a395fbf670607147ae23';
 var _GESTOR_TEL='';   /* WhatsApp do gestor com DDD (ex: 62999990000) — usado em "Esqueci minha senha" */
 var _viewAs=null;
 
@@ -6694,8 +6694,26 @@ setInterval(_authConfereUid,8000);
 async function authGestorEntrar(senha){
   try{_fbAuth=await authEntrarEmail(_GESTOR_EMAIL,senha);_authSalva();return true;}
   catch(e){var t=_authErroTipo(e);
-    if(t==='cred'){try{_fbAuth=await authCriarEmail(_GESTOR_EMAIL,senha);_authSalva();return true;}catch(e2){}}
+    if(t==='cred'){try{_fbAuth=await authCriarEmail(_GESTOR_EMAIL,senha);_authSalva();return true;}
+      catch(e2){if(_authErroTipo(e2)==='existe'&&(await _gestorTrocaSenhaFirebase(senha)))return true;}}
     _authSair();return false;}
+}
+/* a senha do gestor mudou no sistema: pede a senha ANTIGA uma única vez para atualizar a conta segura */
+function _gestorTrocaSenhaFirebase(nova){
+  return new Promise(function(resolve){
+    var c=_el('div',''),m=msgEl();
+    c.appendChild(_el('p','margin:0 0 10px;font-size:13.5px;color:#334155;line-height:1.55;','A senha do gestor foi trocada. Para concluir, digite a SENHA ANTIGA do gestor só esta vez. Depois disso, só a senha nova funciona.'));
+    var f=campoEl('Senha antiga do gestor','password','','');c.appendChild(f.wrap);c.appendChild(m);var fim=false;
+    function sai(v){if(fim)return;fim=true;resolve(v);}
+    dlg('🔐 Concluir troca de senha',c,[{txt:'Agora não',cls:'bs',fn:function(a){a.fechar();sai(false);}},{txt:'Confirmar',cls:'bp',fn:async function(a){
+      var ant=f.input.value;if(!ant)return mostraMsg(m,'Digite a senha antiga.');
+      try{var x=await authEntrarEmail(_GESTOR_EMAIL,ant);_fbAuth=x;_authSalva();
+        var j=await _idtk('update',{idToken:x.tok,password:nova,returnSecureToken:true});
+        _fbAuth=_authDeResp(Object.assign({email:_GESTOR_EMAIL,localId:x.uid},j));_authSalva();
+        a.fechar();toast('✅ Senha do gestor atualizada na conta segura.','ok');sai(true);
+      }catch(e){var t=_authErroTipo(e);mostraMsg(m,t==='cred'?'Senha antiga incorreta.':(t==='muitas'?'Muitas tentativas. Aguarde alguns minutos.':'Não foi possível concluir ('+e.message+').'));}
+    }}]);
+  });
 }
 /* ---- usuários da distribuidora (Configurações > Usuários) ---- */
 async function authSyncUsuario(u,senha){
