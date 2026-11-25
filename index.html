@@ -1224,7 +1224,7 @@ a.ap-dt-nm:hover{text-decoration:underline;color:#2563EB;}
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão</a></div>
-    <div class="login-version">ChoppMaster ERP v5.7 · 21/11</div>
+    <div class="login-version">ChoppMaster ERP v5.8 · 25/11</div>
   </div>
 </div>
 
@@ -7141,6 +7141,17 @@ function _kitsMapeia(kitsO,orig,destP,destM){
   var _mc=modeloCatalogo;modeloCatalogo=function(){return modeloLer().then(function(md){if(!md.dist)return null;return _distDados(md.dist).then(function(d){
     var P=(d.produtos||[]).map(_prodCopia),M=md.maquinas?(d.maquinas||[]).map(_maqCopia):[];return {nome:md.dist,produtos:P,maquinas:M,kits:_kitsMapeia(d.kits,d,P,M)};});}).catch(function(){return null;});};
 })();
+/* v5.8 — no celular, o botão flutuante amarelo faz a ação principal de cada tela (+ Produto, + Cliente, + Lançamento...) */
+function fabAtualiza(){
+  try{var f=document.getElementById('ap-fab');if(!f)return;
+    var b=document.querySelector('#tacts .btn.bp');
+    if(!b||window.innerWidth>768||(typeof _ehPc==='function'&&_ehPc())){f.style.display='none';return;}
+    var t=b.textContent.replace(/^\s*[+＋]\s*/,'').trim();f.innerHTML='＋ '+escHtml(t);f.style.display='';
+    f.onclick=function(){b.click();};
+  }catch(e){}
+}
+(function(){var _gt=goTo;goTo=function(){var r=_gt.apply(this,arguments);setTimeout(fabAtualiza,0);setTimeout(fabAtualiza,300);return r;};
+  window.addEventListener('resize',fabAtualiza);setTimeout(fabAtualiza,1200);})();
 /* ---- PAINEL DO GESTOR ---- */
 function _soGestor(){return _authUser&&_authUser.isMaster===true;}
 var _mTab='resumo',_mRegs=[],_mCad=[],_mFin=[],_mCal=null,_vFil={dist:'',per:'mes',de:'',ate:'',tipo:'',q:''},_fFil={per:'mes'};
