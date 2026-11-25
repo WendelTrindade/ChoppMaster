@@ -1224,7 +1224,7 @@ a.ap-dt-nm:hover{text-decoration:underline;color:#2563EB;}
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão</a></div>
-    <div class="login-version">ChoppMaster ERP v5.10 · 25/11</div>
+    <div class="login-version">ChoppMaster ERP v5.11 · 25/11</div>
   </div>
 </div>
 
@@ -7170,6 +7170,35 @@ function fabAtualiza(){
 }
 (function(){var _gt=goTo;goTo=function(){var r=_gt.apply(this,arguments);setTimeout(fabAtualiza,0);setTimeout(fabAtualiza,300);return r;};
   window.addEventListener('resize',fabAtualiza);setTimeout(fabAtualiza,1200);})();
+/* ===== v5.11 — ENVIAR O LINK DE ACESSO DO SISTEMA ===== */
+function linkAcessoTexto(r){
+  var lk=linkSistema();
+  if(!r)return '🍺 *ChoppMaster — Sistema de Gestão*\n\nOlá! Este é o novo endereço para acessar o sistema:\n'+lk+'\n\nEntre com o mesmo código da distribuidora, login e senha de sempre.\n\n📱 Dica: no celular, abra o link e toque em ⋮ → "Adicionar à tela inicial" para usar como aplicativo.';
+  var nm=String(r.nome||r.id).replace(' (TESTE)',''),rp=String(r.responsavel||'').split(' ')[0];
+  return '🍺 *ChoppMaster — Sistema de Gestão*\n\nOlá'+(rp?', '+rp:'')+'! Este é o link para acessar o sistema da *'+nm+'*:\n'+lk+'\n\n🔑 Código da distribuidora: *'+r.id+'*'+(r.adminLogin?'\n👤 Login: *'+r.adminLogin+'*':'')+'\n🔒 Senha: a mesma de sempre (se esqueceu, me avise que eu gero uma nova).\n\n📱 Dica: no celular, abra o link e toque em ⋮ → "Adicionar à tela inicial" para usar como aplicativo.';
+}
+function linkAcessoEnviar(r0){
+  var regs=(_mRegs||[]).slice().sort(function(a,b){return String(a.nome).localeCompare(String(b.nome));}),r=r0||null;
+  var c=_el('div','');
+  c.appendChild(_el('label','display:block;font-size:11px;font-weight:800;color:#475569;text-transform:uppercase;margin-bottom:3px;','Para quem'));
+  var sd=_sel([['','Mensagem geral (sem dados de distribuidora)']].concat(regs.map(function(x){return [x.id,_nomeCurto(x)];})),r?r.id:'');sd.style.cssText=_css()+'margin-bottom:10px;';c.appendChild(sd);
+  var tl=campoEl('WhatsApp','tel',r?(r.telefone||''):'','(62) 99999-0000');c.appendChild(tl.wrap);
+  c.appendChild(_el('label','display:block;font-size:11px;font-weight:800;color:#475569;text-transform:uppercase;margin:4px 0 3px;','Mensagem (pode editar)'));
+  var tx=_el('textarea',_css()+'min-height:190px;font-family:inherit;line-height:1.45;resize:vertical;');tx.value=linkAcessoTexto(r);c.appendChild(tx);
+  var m=msgEl();c.appendChild(m);
+  sd.onchange=function(){r=regs.filter(function(x){return x.id===sd.value;})[0]||null;tx.value=linkAcessoTexto(r);tl.input.value=r?(r.telefone||''):'';};
+  dlg('🔗 Enviar link de acesso',c,[{txt:'Fechar',cls:'bs',fn:function(a){a.fechar();}},{txt:'📋 Copiar',cls:'bs',fn:function(){copiar(tx.value);}},
+    {txt:'📲 Enviar no WhatsApp',cls:'bk',fn:function(a){var f=_foneWa(tl.input.value);if(tl.input.value.trim()&&f.length<12)return mostraMsg(m,'Confira o número com DDD.');window.open('https://wa.me/'+(f.length>=12?f:'')+'?text='+encodeURIComponent(tx.value),'_blank');a.fechar();}}]);
+}
+(function(){
+  var _dm=distMenu;distMenu=function(r){var x=_dm.apply(this,arguments);
+    try{var gs=document.querySelectorAll('.ap-grid4'),g=gs[gs.length-1];if(g&&!g.querySelector('.lk-it')){var b=_el('button','');b.className='ap-gb vd lk-it';b.innerHTML='<div>🔗</div>Link de acesso';
+      b.onclick=function(){var ov=g;while(ov&&ov.parentNode!==document.body)ov=ov.parentNode;if(ov)ov.remove();linkAcessoEnviar(r);};g.insertBefore(b,g.children[1]||null);}}catch(e){}
+    return x;};
+  var _rm=renderMaster;renderMaster=function(){var r=_rm.apply(this,arguments);
+    try{var bx=document.querySelector('#pg-master .mbtns');if(bx&&!bx.querySelector('.lk-btn')){var b=_el('button','','🔗 Link do sistema');b.className=bx.querySelector('.gs-hb')?'gs-hb lk-btn':'btn bs lk-btn';b.onclick=function(){linkAcessoEnviar(null);};var ref=bx.querySelector('.av-btn')||bx.querySelector('.pp-btn');if(ref)bx.insertBefore(b,ref);else bx.appendChild(b);}}catch(e){}
+    return r;};
+})();
 /* ---- PAINEL DO GESTOR ---- */
 function _soGestor(){return _authUser&&_authUser.isMaster===true;}
 var _mTab='resumo',_mRegs=[],_mCad=[],_mFin=[],_mCal=null,_vFil={dist:'',per:'mes',de:'',ate:'',tipo:'',q:''},_fFil={per:'mes'};
