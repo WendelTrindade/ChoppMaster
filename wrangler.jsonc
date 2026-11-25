@@ -1,0 +1,9 @@
+{
+  // Publica o ChoppMaster no Cloudflare (o sistema é só o index.html)
+  "name": "choppmaster",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./",
+    "not_found_handling": "single-page-application"
+  }
+}
