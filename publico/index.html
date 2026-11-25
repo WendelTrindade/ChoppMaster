@@ -1224,7 +1224,7 @@ a.ap-dt-nm:hover{text-decoration:underline;color:#2563EB;}
     <div style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Esqueci minha senha</a></div>
     <div class="login-err" id="login-err"></div>
     <div style="text-align:center;margin-top:8px;"><a href="#" onclick="testarConexao();return false;" style="font-size:12px;color:#93C5FD;text-decoration:underline;">Testar conexão</a></div>
-    <div class="login-version">ChoppMaster ERP v5.12 · 25/11</div>
+    <div class="login-version">ChoppMaster ERP v5.13 · 25/11</div>
   </div>
 </div>
 
@@ -4984,18 +4984,40 @@ function _mandaImprimir(html){
   var pa=document.getElementById('pra');pa.style.display='block';pa.innerHTML=html;
   setTimeout(function(){window.print();setTimeout(function(){pa.style.display='none';pa.innerHTML='';},3000);},150);
 }
-function imprimirPed(id,modelo){pedidoPdf(id,modelo);}
+function imprimirPed(id,modelo){escolherImpressao(id,modelo);}
 function imprimirPedPapel(id,modelo){
   var p=DB.pedidos.find(function(x){return x.id===id;});if(!p)return;
   modelo=modelo||p.modelo||modeloPadrao();
   _mandaImprimir(modelo==='simples'?htmlPedSimples(p):htmlPedTermos(p));
 }
-function escolherImpressao(id){
+var _termosEscolha={};
+function termosPadraoPed(p){
+  if(p&&_termosEscolha[p.id])return _termosEscolha[p.id];
+  var its=(p&&p.itens)||[],hM=its.some(function(i){return i.tipo==='maquina';}),hP=its.some(function(i){return i.tipo!=='maquina';});
+  return {venda:hP||!hM,loc:hM||(!hP&&locSempre())};
+}
+function escolherImpressao(id,modelo){
   var p=DB.pedidos.find(function(x){return x.id===id;});if(!p)return;
-  var c=_el('div','');c.appendChild(_el('p','margin:0 0 6px;font-size:13px;color:#475569;line-height:1.5;','Escolha o modelo do pedido nº '+(p.num||'')+':'));
-  c.appendChild(_el('p','margin:0;font-size:12px;color:#64748B;line-height:1.5;','• Simples: só os dados, os itens e o total, em formato de cupom.\n'));
-  c.appendChild(_el('p','margin:0;font-size:12px;color:#64748B;line-height:1.5;','• Com termos: inclui o termo de responsabilidade da venda e as cláusulas de locação das máquinas.'));
-  dlg('📄 Gerar PDF do pedido',c,[{txt:'Cancelar',cls:'bs',fn:function(a){a.fechar();}},{txt:'📄 Simples',cls:'bs',fn:function(a){a.fechar();imprimirPed(id,'simples');}},{txt:'📑 Com termos',cls:'bp',fn:function(a){a.fechar();imprimirPed(id,'termos');}}]);
+  var sel=termosPadraoPed(p),mod=modelo||p.modelo||modeloPadrao();
+  var c=document.createElement('div');
+  function op(v,tit,sub){return '<label style="display:flex;gap:10px;align-items:flex-start;border:1.5px solid #E2E8F0;border-radius:10px;padding:9px 11px;margin-bottom:7px;cursor:pointer;"><input type="radio" name="impmod" value="'+v+'" '+(mod===v?'checked':'')+' style="margin-top:3px;width:18px;height:18px;"><span><b style="color:#0F2044;font-size:14px;">'+tit+'</b><br><small style="color:#64748B;font-size:12px;">'+sub+'</small></span></label>';}
+  function ck(k,tit,sub){return '<label style="display:flex;gap:10px;align-items:flex-start;padding:7px 4px;cursor:pointer;"><input type="checkbox" id="impt-'+k+'" '+(sel[k]?'checked':'')+' style="margin-top:2px;width:18px;height:18px;"><span><b style="color:#0F2044;font-size:13.5px;">'+tit+'</b><br><small style="color:#64748B;font-size:12px;">'+sub+'</small></span></label>';}
+  c.innerHTML='<p style="margin:0 0 8px;font-size:13px;color:#475569;">Pedido nº '+escHtml(String(p.num||''))+' — escolha o modelo:</p>'
+   +op('simples','📄 Simples','Só os dados, os itens e o total, em formato de cupom.')
+   +op('termos','📑 Com termos','Pedido completo com o(s) termo(s) para o cliente assinar.')
+   +'<div id="impt-box" style="margin:2px 0 0 8px;padding:6px 10px;border-left:3px solid #2563EB;background:#F8FAFC;border-radius:0 8px 8px 0;">'
+   +'<div style="font-size:11px;font-weight:800;color:#1E3A8A;text-transform:uppercase;margin:2px 0 2px;">Quais termos vão no pedido?</div>'
+   +ck('venda','🍺 Termo de venda (chopp)','Responsabilidade pela compra do chopp e produtos.')
+   +ck('loc','🔧 Termo de locação (máquinas)','Cláusulas do aluguel da chopeira, cilindro e equipamentos.')+'</div>';
+  var box=c.querySelector('#impt-box');
+  function atu(){var m=c.querySelector('input[name=impmod]:checked');box.style.display=(m&&m.value==='termos')?'':'none';}
+  Array.prototype.forEach.call(c.querySelectorAll('input[name=impmod]'),function(r){r.onchange=atu;});atu();
+  dlg('📄 Gerar PDF do pedido',c,[{txt:'Cancelar',cls:'bs',fn:function(a){a.fechar();}},{txt:'📄 Gerar PDF',cls:'bp',fn:function(a){
+    var m=(c.querySelector('input[name=impmod]:checked')||{}).value||'termos';
+    if(m==='termos'){var s={venda:c.querySelector('#impt-venda').checked,loc:c.querySelector('#impt-loc').checked};
+      if(!s.venda&&!s.loc){toast('Marque pelo menos um termo, ou escolha o modelo Simples.','err');return;}
+      _termosEscolha[p.id]=s;}
+    a.fechar();pedidoPdf(id,m);}}]);
 }
 /* --- modelo SIMPLES (cupom, fonte de máquina de escrever) --- */
 function htmlPedSimples(p){
@@ -5035,12 +5057,13 @@ function htmlPedSimples(p){
   +'</div>';
 }
 /* --- modelo COM TERMOS (cabe em 1 folha A4) --- */
-function htmlPedTermos(p){
+function htmlPedTermos(p,sel){
   var cli=DB.clientes.find(function(x){return x.id===p.clienteId;})||{},cfg=DB.config||{},tm=termosCfg(cfg);
   var pgT=(p.pagamentos||[]).reduce(function(s,x){return s+(x.valor||0);},0),sl=getSaldo(p);
   var hM=(p.itens||[]).some(function(i){return i.tipo==='maquina';});
   var nmM=(p.itens||[]).filter(function(i){return i.tipo==='maquina';}).map(_nomeItem).join(', ');
   var sub=p.subtotal||((p.total||0)+(p.desconto||0)),cor=corPedido(cfg),empresa=cfg.empresa||'ChoppMaster';
+  sel=sel||termosPadraoPed(p);var nT=(sel.venda?1:0)+(sel.loc?1:0),fT=nT===1?'7.8px':'6.8px';
   function E(v){return escHtml(v==null?'':String(v));}
   function fm(v){return 'R$ '+(parseFloat(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
   function rot(t,c){return '<div style="font-size:7px;font-weight:700;color:'+(c||'#64748b')+';text-transform:uppercase;letter-spacing:.5px;">'+t+'</div>';}
@@ -5048,17 +5071,17 @@ function htmlPedTermos(p){
   var logoH=cfg.logo?'<img src="'+E(cfg.logo)+'" style="max-height:44px;max-width:110px;">':'';
   var itH=(p.itens||[]).map(function(it,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+';"><td style="padding:3px 6px;">'+(it.tipo==='maquina'?'🔧 ':'🍺 ')+E(_nomeItem(it))+(it.tipo==='maquina'?' <span style="color:#92400e;font-size:7px;">(locação)</span>':'')+'</td><td style="padding:3px 6px;text-align:center;">'+E(it.qty)+'</td><td style="padding:3px 6px;text-align:right;">'+fm(it.preco)+'</td><td style="padding:3px 6px;text-align:right;font-weight:700;">'+fm((it.qty||0)*(it.preco||0))+'</td></tr>';}).join('');
   function clausulas(t,titulo,corT,bg,bd){var ls=String(t).replace(/\{maquina\}/g,nmM||'equipamento').replace(/\{entrega\}/g,dBr(p.entrega)).replace(/\{devolucao\}/g,dBr(p.devolucao)).split('\n').filter(function(l){return l.trim();});
-    return '<div style="flex:1;min-width:0;padding:6px 8px;background:'+bg+';border:1px solid '+bd+';border-radius:5px;">'+rot(titulo,corT)+ls.map(function(l){return '<p style="font-size:6.6px;color:#334155;margin:1.5px 0;line-height:1.32;text-align:justify;">'+E(l)+'</p>';}).join('')+'</div>';}
+    return '<div style="flex:1;min-width:0;box-sizing:border-box;padding:6px 8px;background:'+bg+';border:1px solid '+bd+';border-radius:5px;">'+rot(titulo,corT)+ls.map(function(l){return '<p style="font-size:'+fT+';color:#334155;margin:1.5px 0;line-height:1.34;text-align:justify;overflow-wrap:anywhere;">'+E(l)+'</p>';}).join('')+'</div>';}
   var endCli=[cli.end,cli.bairro,cli.cidade].filter(Boolean).join(' - ');
   var cond=sl<=0?'✔ PAGO':(p.vencSaldo?'Saldo vence em '+dBr(p.vencSaldo):(pgT>0?'Saldo na entrega':'Pagar na entrega'));
-  return '<div style="font-family:Arial,Helvetica,sans-serif;font-size:9px;color:#0f172a;max-width:188mm;margin:0 auto;">'
+  return '<div style="font-family:Arial,Helvetica,sans-serif;font-size:9px;color:#0f172a;width:100%;max-width:700px;margin:0;box-sizing:border-box;overflow-wrap:anywhere;">'
   /* cabeçalho */
-  +'<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2.5px solid '+cor+';padding-bottom:6px;margin-bottom:7px;">'
-  +'<div style="display:flex;align-items:center;gap:8px;">'+logoH+'<div><div style="font-size:16px;font-weight:900;color:'+cor+';">'+(logoH?'':'🍺 ')+E(empresa)+'</div>'
+  +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:2.5px solid '+cor+';padding-bottom:6px;margin-bottom:7px;">'
+  +'<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">'+logoH+'<div><div style="font-size:16px;font-weight:900;color:'+cor+';">'+(logoH?'':'🍺 ')+E(empresa)+'</div>'
   +(cfg.slogan?'<div style="font-size:8px;font-style:italic;color:#475569;">'+E(cfg.slogan)+'</div>':'')
   +'<div style="font-size:8px;color:#475569;">'+[E(cfg.responsavel),docLbl,E(cfg.tel),E(cfg.email)].filter(Boolean).join(' · ')+'</div>'
   +(cfg.end?'<div style="font-size:8px;color:#64748b;">'+E(cfg.end)+'</div>':'')+'</div></div>'
-  +'<div style="text-align:right;"><div style="font-size:8px;font-weight:700;color:'+cor+';text-transform:uppercase;letter-spacing:1px;">'+(hM?'Pedido de venda + locação':'Pedido de venda')+'</div>'
+  +'<div style="text-align:right;flex:none;white-space:nowrap;padding-right:2px;"><div style="font-size:8px;font-weight:700;color:'+cor+';text-transform:uppercase;letter-spacing:1px;">'+(hM?'Pedido de venda + locação':'Pedido de venda')+'</div>'
   +'<div style="font-size:19px;font-weight:900;color:#0f2044;line-height:1.1;">Nº '+E(String(p.num||'').padStart(4,'0'))+'</div><div style="font-size:8px;color:#64748b;">Emitido em '+dBr(p.data)+'</div></div></div>'
   /* cliente */
   +'<div style="display:flex;gap:6px;margin-bottom:6px;"><div style="flex:2;background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px;padding:5px 8px;">'+rot('Cliente')
@@ -5082,12 +5105,12 @@ function htmlPedTermos(p){
   +'<div style="display:flex;justify-content:flex-end;gap:14px;font-size:8.5px;margin-bottom:5px;">'+(p.juros?'<span style="color:#92400e;">Juros do parcelamento + '+fm(p.juros)+'</span>':'')+(p.desconto?'<span>Subtotal '+fm(sub)+'</span><span style="color:#059669;">Desconto − '+fm(p.desconto)+'</span>':'')+'<span style="font-size:12px;font-weight:900;color:#0f2044;">TOTAL '+fm(p.total)+'</span></div>'
   +(p.obs?'<div style="background:#fffbeb;border-left:3px solid #f59e0b;padding:4px 8px;margin-bottom:5px;font-size:8.5px;"><b>Obs.:</b> '+E(p.obs)+'</div>':'')
   /* termos lado a lado */
-  +'<div style="display:flex;gap:6px;margin-bottom:6px;">'+clausulas(tm.venda,'Termo de responsabilidade — venda','#475569','#f8fafc','#e2e8f0')+((hM||locSempre(cfg))?clausulas(tm.loc,'Cláusulas de locação — máquinas','#92400e','#fffbeb','#fde68a'):'')+'</div>'
+  +(nT?'<div style="display:flex;gap:6px;margin-bottom:6px;align-items:flex-start;">'+(sel.venda?clausulas(tm.venda,'Termo de responsabilidade — venda (chopp)','#475569','#f8fafc','#e2e8f0'):'')+(sel.loc?clausulas(tm.loc,'Cláusulas de locação — máquinas','#92400e','#fffbeb','#fde68a'):'')+'</div>':'')
   /* recebimento */
-  +'<div style="border:1px dashed #94a3b8;border-radius:5px;padding:5px 8px;font-size:8.5px;margin-bottom:6px;">'+rot('Recebimento da entrega')
+  +'<div class="pb-av" style="border:1px dashed #94a3b8;border-radius:5px;padding:5px 8px;font-size:8.5px;margin-bottom:6px;">'+rot('Recebimento da entrega')
   +'Recebi os produtos'+(hM?' e equipamentos':'')+' acima em perfeitas condições em ____/____/______ às ____:____ &nbsp; Nome legível: ________________________________</div>'
   /* assinaturas */
-  +'<div style="display:flex;gap:30px;margin-top:16px;">'
+  +'<div class="pb-av" style="display:flex;gap:30px;margin-top:16px;">'
   +'<div style="flex:1;text-align:center;"><div style="border-top:1.2px solid #334155;padding-top:3px;font-size:9px;font-weight:700;">'+E(cfg.responsavel||empresa)+'</div><div style="font-size:7px;color:#94a3b8;">'+(hM?'VENDEDOR / LOCADOR':'VENDEDOR')+'</div></div>'
   +'<div style="flex:1;text-align:center;">'+(p.aprov&&p.aprov.assinatura?'<img src="'+E(p.aprov.assinatura)+'" style="height:36px;margin-bottom:-5px;">':'')
   +'<div style="border-top:1.2px solid #334155;padding-top:3px;font-size:9px;font-weight:700;">'+E(cli.nome||'')+'</div><div style="font-size:7px;color:#94a3b8;">'+(hM?'COMPRADOR / LOCATÁRIO':'COMPRADOR')+(cli.doc?' · '+E(cli.doc):'')+'</div>'
@@ -5766,9 +5789,11 @@ function gerarPdfHtml(html,nomeArq){
     box.style.cssText='position:absolute;left:0;top:0;width:'+W+'px;background:#fff;z-index:-1;opacity:1;pointer-events:none;-webkit-text-size-adjust:100%;text-size-adjust:100%;';
     box.innerHTML='<div style="width:'+W+'px;background:#fff;color:#111;-webkit-text-size-adjust:100%;text-size-adjust:100%;">'+html+'</div>';
     document.body.appendChild(box);window.scrollTo(0,0);
+    var cx=box.getBoundingClientRect().left,sw=W;Array.prototype.forEach.call(box.querySelectorAll('*'),function(el){var r=el.getBoundingClientRect();if(r.width&&r.right-cx>sw)sw=Math.ceil(r.right-cx);});
+    var h2c={scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0};if(sw>W){h2c.width=sw+4;}
     return html2pdf().set({margin:[8,10,8,10],filename:nomeArq,image:{type:'jpeg',quality:0.95},
-      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0},
-      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css']}}).from(box.firstChild).outputPdf('blob');
+      html2canvas:h2c,
+      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css'],avoid:['p','.pb-av']}}).from(box.firstChild).outputPdf('blob');
   }).then(function(bl){if(box)box.remove();try{window.scrollTo(sx,sy);}catch(e){}return bl;},function(e){if(box)box.remove();try{window.scrollTo(sx,sy);}catch(x){}throw e;});
 }
 var _pdfUrl=null;
